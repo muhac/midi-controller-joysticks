@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UseWPF>true</UseWPF>
+        <ApplicationIcon>App.ico</ApplicationIcon>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="vJoyInterfaceWrap">
+            <HintPath>lib\x64\vJoyInterfaceWrap.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Page Update="Views\MainWindow.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="ViewModels\"/>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <PostBuildEvent>copy $(SolutionDir)lib\x64\vJoyInterface.dll $(TargetDir).</PostBuildEvent>
+    </PropertyGroup>
+</Project>
