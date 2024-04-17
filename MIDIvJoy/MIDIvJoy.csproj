@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
@@ -7,6 +7,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>
         <ApplicationIcon>App.ico</ApplicationIcon>
+        <RootNamespace>MIDIvJoy</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,10 +25,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="ViewModels\"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="8.0.20"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="Views\Counter.razor"/>
     </ItemGroup>
 
     <PropertyGroup>
         <PostBuildEvent>copy $(SolutionDir)lib\x64\vJoyInterface.dll $(TargetDir).</PostBuildEvent>
     </PropertyGroup>
+
 </Project>

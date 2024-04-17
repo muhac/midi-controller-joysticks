@@ -1,0 +1,140 @@
+﻿@using MIDIvJoy.Services.Joysticks
+@using JoyFeeder = MIDIvJoy.Services.Joysticks.JoyFeeder
+
+<style>
+    footer {
+        margin-top: auto;
+    }
+
+    .status-warning {
+        background-color: lightcoral;
+        color: ghostwhite;
+        font-weight: bold;
+    }
+
+    .status-note {
+        text-align: center;
+        padding: 2px;
+        background-color: lightgoldenrodyellow;
+        color: #233333;
+        display: none;
+    }
+
+    footer:hover .status-note {
+        display: block;
+    }
+
+    .status-container {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        width: 100vw;
+        gap: 2px;
+        margin-top: 2px;
+    }
+
+    .status-block {
+        padding: 1vw;
+        text-align: center;
+    }
+
+    .status-Free {
+        background-color: lightgreen;
+        cursor: grab;
+    }
+
+    .status-Engaged {
+        background-color: lightskyblue;
+        cursor: grabbing;
+    }
+
+    .status-Occupied {
+        background-color: lightsalmon;
+        cursor: wait;
+    }
+
+    .status-Unknown {
+        background-color: lightgray;
+        cursor: not-allowed;
+    }
+</style>
+
+@{
+    var status = new JoyStatus[16];
+
+    for (uint id = 1; id <= 16; id++)
+    {
+        var joystick = JoyManager.GetInstance().GetJoystick(id);
+        status[id - 1] = joystick?.Status ?? JoyStatus.Unknown;
+    }
+
+    var unknownCount = status.Count(s => s == JoyStatus.Unknown);
+    if (unknownCount == 16)
+    {
+        <div class="status-note status-warning">WARNING: vJoy is not enabled!</div>
+    }
+    else
+    {
+        <div class="status-note">Click on a vJoy to acquire or release it.</div>
+    }
+
+// if the second row is all unknown, only show the first row
+    unknownCount %= 8;
+
+<div class="status-container">
+    @for (uint i = 0; i < 16; i++)
+    {
+        var isUnknown = status[i] == JoyStatus.Unknown;
+        if (isUnknown && unknownCount-- <= 0) continue;
+
+        <div class="status-block status-@status[i]" onclick="@ToggleActive(i + 1)">
+            <div>vJoy @(i + 1)</div>
+            @if (isUnknown)
+            {
+                <small>N/A</small>
+            }
+            else
+            {
+                <b>@status[i]</b>
+            }
+        </div>
+    }
+</div>}
+
+@code {
+    private readonly JoyManager _m = JoyManager.GetInstance();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        for (uint id = 1; id <= 16; id++)
+        {
+            _m.SubscribeToJoystickStatusChanges(id, OnJoystickStatusChanged);
+        }
+    }
+
+    private void OnJoystickStatusChanged(JoyFeeder sender, JoyStatus status)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private Action ToggleActive(uint id)
+    {
+        var vj = _m.GetJoystick(id);
+        if (vj == null) return () => { };
+
+        return () =>
+        {
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+            switch (vj.Status)
+            {
+                case JoyStatus.Free:
+                    vj.Acquire();
+                    break;
+                case JoyStatus.Engaged:
+                    vj.Release();
+                    break;
+            }
+        };
+    }
+
+}

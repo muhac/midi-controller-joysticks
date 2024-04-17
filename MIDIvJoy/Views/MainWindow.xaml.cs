@@ -1,6 +1,10 @@
 ﻿namespace MIDIvJoy.Views;
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -10,8 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Text.RegularExpressions;
-using ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
@@ -21,14 +24,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel();
-    }
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-    [GeneratedRegex("[^0-9]+")]
-    private static partial Regex NumericalGeneratedRegex();
-
-    private void NumberValidationTextBox(object sender, TextCompositionEventArgs e)
-    {
-        e.Handled = NumericalGeneratedRegex().IsMatch(e.Text);
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddWpfBlazorWebView();
+        Resources.Add("services", serviceCollection.BuildServiceProvider());
     }
 }
