@@ -2,22 +2,26 @@
 @using JoyFeeder = MIDIvJoy.Services.Joysticks.JoyFeeder
 
 <style>
-    footer {
-        margin-top: auto;
+    .status-note {
+        text-align: center;
+        line-height: 24px;
+        height: 24px;
+        margin-bottom: 2px;
+        margin-top: -26px;
+        background-color: lightgoldenrodyellow;
+        color: #233333;
+        display: none;
+    }
+
+    .status-note > small {
+        color: dimgray;
+        margin-left: 1%;
     }
 
     .status-warning {
         background-color: lightcoral;
-        color: ghostwhite;
-        font-weight: bold;
-    }
-
-    .status-note {
-        text-align: center;
-        padding: 2px;
-        background-color: lightgoldenrodyellow;
-        color: #233333;
-        display: none;
+        color: floralwhite;
+        display: block;
     }
 
     footer:hover .status-note {
@@ -26,15 +30,32 @@
 
     .status-container {
         display: grid;
-        grid-template-columns: repeat(8, 1fr);
+        grid-template-columns: repeat(@_blocks, 1fr);
         width: 100vw;
         gap: 2px;
-        margin-top: 2px;
     }
 
     .status-block {
-        padding: 1vw;
+        height: 48px;
+        padding-top: 6px;
         text-align: center;
+    }
+
+    .status-block > div {
+        margin-top: -4px;
+        font-size: 12px;
+    }
+
+    .status-num {
+        display: none;
+    }
+
+    .status-block:hover .status-num {
+        display: block;
+    }
+
+    .status-block:hover .status-info {
+        display: none;
     }
 
     .status-Free {
@@ -72,36 +93,53 @@
     {
         <div class="status-note status-warning">WARNING: vJoy is not enabled!</div>
     }
-    else
+    else if (_m.VersionDll != _m.VersionDrv)
     {
-        <div class="status-note">Click on a vJoy to acquire or release it.</div>
-    }
-
-// if the second row is all unknown, only show the first row
-    unknownCount %= 8;
-
-<div class="status-container">
-    @for (uint i = 0; i < 16; i++)
-    {
-        var isUnknown = status[i] == JoyStatus.Unknown;
-        if (isUnknown && unknownCount-- <= 0) continue;
-
-        <div class="status-block status-@status[i]" onclick="@ToggleActive(i + 1)">
-            <div>vJoy @(i + 1)</div>
-            @if (isUnknown)
-            {
-                <small>N/A</small>
-            }
-            else
-            {
-                <b>@status[i]</b>
-            }
+        <div class="status-note status-warning">
+            WARNING: DLL version @($"{_m.VersionDll:X}") does not match driver version @($"{_m.VersionDrv:X}")!
         </div>
     }
-</div>}
+    else
+    {
+        <div class="status-note">
+            <span>Click on a vJoy to acquire or release it.</span>
+            <small>Driver version: @($"{_m.VersionDrv:X}")</small>
+        </div>
+    }
+
+    // display 8 blocks instead of 16 if there are more than 8 unknown joysticks.
+    unknownCount = status[8..].Count(s => s == JoyStatus.Unknown);
+    Console.WriteLine(unknownCount);
+    var blocks = unknownCount == 8 ? 8 : 16;
+    if (blocks != _blocks)
+    {
+        _blocks = blocks;
+        StateHasChanged();
+    }
+
+    <div class="status-container">
+        @for (uint i = 0; i < blocks; i++)
+        {
+            var id = i + 1;
+            var icon = status[i] switch
+            {
+                JoyStatus.Free => "plus-square",
+                JoyStatus.Engaged => "check-square",
+                JoyStatus.Occupied => "minus-square",
+                _ => "close-square",
+            };
+
+            <div class="status-block status-@status[i]" onclick="@ToggleActive(id)">
+                <Icon Type=@icon Theme="outline" Style="font-size: 24px;"/>
+                <div class="status-info">@(status[i] != JoyStatus.Unknown ? status[i] : id)</div>
+                <div class="status-num">@id</div>
+            </div>
+        }
+    </div>}
 
 @code {
     private readonly JoyManager _m = JoyManager.GetInstance();
+    private int _blocks;
 
     protected override void OnInitialized()
     {

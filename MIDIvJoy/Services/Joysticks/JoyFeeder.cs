@@ -24,9 +24,9 @@ public class JoyFeeder
 
     public JoyStatus Status { get; private set; }
 
-    internal JoyFeeder(ref object driverGlobalLock, ref vJoy vj, uint id)
+    internal JoyFeeder(ref object wLock, ref vJoy vj, uint id)
     {
-        _driverGlobalLock = driverGlobalLock;
+        _driverGlobalLock = wLock;
         _id = id;
         _vj = vj;
         _state = new vJoy.JoystickState();

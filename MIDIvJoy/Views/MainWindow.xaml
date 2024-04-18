@@ -6,11 +6,11 @@
         xmlns:blazor="clr-namespace:Microsoft.AspNetCore.Components.WebView.Wpf;assembly=Microsoft.AspNetCore.Components.WebView.Wpf"
         xmlns:local="clr-namespace:MIDIvJoy.Views"
         mc:Ignorable="d"
-        Title="MIDIvJoy" Height="640" Width="960">
+        Title="MIDIvJoy" Width="960" Height="640" MinWidth="960" MinHeight="640">
     <Grid>
         <blazor:BlazorWebView HostPage="wwwroot\index.html" Services="{DynamicResource services}">
             <blazor:BlazorWebView.RootComponents>
-                <blazor:RootComponent Selector="#joyStatus" ComponentType="{x:Type local:JoyStatusPage}" />
+                <blazor:RootComponent Selector="#app" ComponentType="{x:Type local:App}" />
             </blazor:BlazorWebView.RootComponents>
         </blazor:BlazorWebView>
     </Grid>

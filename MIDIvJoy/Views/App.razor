@@ -1,0 +1,47 @@
+﻿<Layout Class="site-layout-background">
+    <Header Class="header" Style="position: fixed; z-index: 1; width: 100%; height: 64px">
+        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" DefaultSelectedKeys=@(new[] { "1" })>
+            <MenuItem Key="1">nav 1</MenuItem>
+            <MenuItem Key="2">nav 2</MenuItem>
+            <MenuItem Key="3">nav 3</MenuItem>
+        </Menu>
+    </Header>
+    <Layout Style="padding:64px 0 48px;">
+        <Menu Mode="MenuMode.Inline"
+              DefaultSelectedKeys=@(new[] { "1" })
+              DefaultOpenKeys=@(new[] { "sub1" })
+              Style="width:160px; height: calc(100vh - 64px - 48px - 2px); overflow: auto; position: fixed;">
+
+            <!-- SubMenu: need to be 1px less than the parent Menu -->
+            <MenuItem Style="width:159px;" Key="1">option1</MenuItem>
+            <MenuItem Style="width:159px;" Key="2">option2</MenuItem>
+            <MenuItem Style="width:159px;" Key="3">option3</MenuItem>
+            <MenuItem Style="width:159px;" Key="4">option4</MenuItem>
+
+        </Menu>
+
+        <Layout Style="padding: 0 16px 16px 176px;">
+            <Breadcrumb Style="margin: 12px 0;">
+                <BreadcrumbItem>Home</BreadcrumbItem>
+                <BreadcrumbItem>List</BreadcrumbItem>
+                <BreadcrumbItem>App</BreadcrumbItem>
+            </Breadcrumb>
+            <Content Class="site-layout-background" Style=" padding: 24px; margin: 0; min-height: 280px;">
+                Content
+            </Content>
+        </Layout>
+    </Layout>
+
+    <Footer Style="position: fixed; bottom: 0; z-index: 1; width: 100%; height:48px; padding: 0;">
+        <JoyStatusPage/>
+    </Footer>
+</Layout>
+
+
+<style>
+    .site-layout-background {
+        background: #fff;
+    }
+</style>
+
+<AntContainer/>

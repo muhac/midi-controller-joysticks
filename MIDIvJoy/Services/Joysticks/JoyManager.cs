@@ -11,6 +11,9 @@ public class JoyManager
 
     private readonly JoyFeeder[] _joysticks = new JoyFeeder[16];
 
+    public uint VersionDll { get; private init; }
+    public uint VersionDrv { get; private init; }
+
     // Singleton instance
     private static readonly JoyManager Instance = new();
 
@@ -27,7 +30,6 @@ public class JoyManager
             Application.Current.Shutdown();
         }
 
-        // Test if DLL matches the driver
         uint dllV = 0, drvV = 0;
         if (_vJoy.DriverMatch(ref dllV, ref drvV))
         {
@@ -38,15 +40,22 @@ public class JoyManager
             Console.WriteLine("Version of Driver ({0:X}) does NOT match DLL Version ({1:X})", drvV, dllV);
         }
 
+
+        // Test if DLL matches the driver
+        uint dll = 0, drv = 0;
+        _vJoy.DriverMatch(ref dll, ref drv);
+        Console.WriteLine($"vJoy DLL: {dll}, Driver: {drv}");
+        VersionDll = dll;
+        VersionDrv = drv;
+
         for (uint i = 0; i < _joysticks.Length; i++)
         {
-            var id = i + 1;
-            var feeder = new JoyFeeder(ref _vJoyLock, ref _vJoy, id);
+            var feeder = new JoyFeeder(ref _vJoyLock, ref _vJoy, i + 1);
             _joysticks[i] = feeder;
 
+            var random = new Random((int)i);
             Task.Run(async () =>
             {
-                var random = new Random((int)id);
                 while (true)
                 {
                     var status = feeder.UpdateStatus();

@@ -28,6 +28,7 @@ public partial class MainWindow : Window
 
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddWpfBlazorWebView();
+        serviceCollection.AddAntDesign();
         Resources.Add("services", serviceCollection.BuildServiceProvider());
     }
 }
