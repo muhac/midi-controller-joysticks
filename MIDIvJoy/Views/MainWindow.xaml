@@ -6,7 +6,7 @@
         xmlns:blazor="clr-namespace:Microsoft.AspNetCore.Components.WebView.Wpf;assembly=Microsoft.AspNetCore.Components.WebView.Wpf"
         xmlns:local="clr-namespace:MIDIvJoy.Views"
         mc:Ignorable="d"
-        Title="MIDIvJoy" Width="960" Height="640" MinWidth="960" MinHeight="640">
+        Title="MIDIvJoy" Width="1024" Height="768" MinWidth="640" MinHeight="640">
     <Grid>
         <blazor:BlazorWebView HostPage="wwwroot\index.html" Services="{DynamicResource services}">
             <blazor:BlazorWebView.RootComponents>

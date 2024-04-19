@@ -60,8 +60,7 @@ public class JoyManager
                 {
                     var status = feeder.UpdateStatus();
                     var time = .5 + random.NextDouble();
-                    if (status == JoyStatus.Occupied) time += 2;
-                    if (status == JoyStatus.Unknown) time *= 30;
+                    if (status == JoyStatus.Occupied) time += 1;
                     await Task.Delay(TimeSpan.FromSeconds(time));
                 }
                 // ReSharper disable once FunctionNeverReturns

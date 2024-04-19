@@ -1,15 +1,14 @@
 ﻿@using MIDIvJoy.Services.Joysticks
-@using JoyFeeder = MIDIvJoy.Services.Joysticks.JoyFeeder
 
 <style>
     .status-note {
         text-align: center;
-        line-height: 24px;
-        height: 24px;
-        margin-bottom: 2px;
+        line-height: 26px;
+        height: 26px;
         margin-top: -26px;
         background-color: lightgoldenrodyellow;
         color: #233333;
+        border-bottom: 2px solid #f0f2f5;
         display: none;
     }
 
@@ -84,8 +83,7 @@
 
     for (uint id = 1; id <= 16; id++)
     {
-        var joystick = JoyManager.GetInstance().GetJoystick(id);
-        status[id - 1] = joystick?.Status ?? JoyStatus.Unknown;
+        status[id - 1] = _m.GetJoystick(id)?.Status ?? JoyStatus.Unknown;
     }
 
     var unknownCount = status.Count(s => s == JoyStatus.Unknown);
@@ -109,7 +107,6 @@
 
     // display 8 blocks instead of 16 if there are more than 8 unknown joysticks.
     unknownCount = status[8..].Count(s => s == JoyStatus.Unknown);
-    Console.WriteLine(unknownCount);
     var blocks = unknownCount == 8 ? 8 : 16;
     if (blocks != _blocks)
     {
@@ -146,13 +143,8 @@
         base.OnInitialized();
         for (uint id = 1; id <= 16; id++)
         {
-            _m.SubscribeToJoystickStatusChanges(id, OnJoystickStatusChanged);
+            _m.SubscribeToJoystickStatusChanges(id, (_, _) => InvokeAsync(StateHasChanged));
         }
-    }
-
-    private void OnJoystickStatusChanged(JoyFeeder sender, JoyStatus status)
-    {
-        InvokeAsync(StateHasChanged);
     }
 
     private Action ToggleActive(uint id)

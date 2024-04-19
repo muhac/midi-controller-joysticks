@@ -1,47 +1,141 @@
-﻿<Layout Class="site-layout-background">
-    <Header Class="header" Style="position: fixed; z-index: 1; width: 100%; height: 64px">
-        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" DefaultSelectedKeys=@(new[] { "1" })>
-            <MenuItem Key="1">nav 1</MenuItem>
-            <MenuItem Key="2">nav 2</MenuItem>
-            <MenuItem Key="3">nav 3</MenuItem>
+﻿<Layout>
+    <Header Class="header app-header">
+        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" DefaultSelectedKeys=@(new[] { $"{_menuActive}" })>
+
+            @foreach (var menu in _menus)
+            {
+                <MenuItem Class="app-header-item" Key="@($"{menu.Key}")"
+                          OnClick="@(_ => _menuActive = menu.Key)">
+                    @menu.Title
+                </MenuItem>
+            }
+
         </Menu>
     </Header>
-    <Layout Style="padding:64px 0 48px;">
-        <Menu Mode="MenuMode.Inline"
-              DefaultSelectedKeys=@(new[] { "1" })
-              DefaultOpenKeys=@(new[] { "sub1" })
-              Style="width:160px; height: calc(100vh - 64px - 48px - 2px); overflow: auto; position: fixed;">
 
-            <!-- SubMenu: need to be 1px less than the parent Menu -->
-            <MenuItem Style="width:159px;" Key="1">option1</MenuItem>
-            <MenuItem Style="width:159px;" Key="2">option2</MenuItem>
-            <MenuItem Style="width:159px;" Key="3">option3</MenuItem>
-            <MenuItem Style="width:159px;" Key="4">option4</MenuItem>
+    @switch (_menuActive)
+    {
+        case MenuBar.JoyWatcher:
+            <JoyWatcherPage/>
+            break;
+        case MenuBar.Development:
+            <Layout Class="app-layout">
+                <Menu Class="app-menu" Mode="MenuMode.Inline"
+                      DefaultSelectedKeys=@(new[] { "1" })>
 
-        </Menu>
+                    @for (var i = 0; i < 2; i++)
+                    {
+                        var key = (i + 1).ToString();
+                        <MenuItem class="app-menu-item" Key=@key>Dev Page @key</MenuItem>
+                    }
 
-        <Layout Style="padding: 0 16px 16px 176px;">
-            <Breadcrumb Style="margin: 12px 0;">
-                <BreadcrumbItem>Home</BreadcrumbItem>
-                <BreadcrumbItem>List</BreadcrumbItem>
-                <BreadcrumbItem>App</BreadcrumbItem>
-            </Breadcrumb>
-            <Content Class="site-layout-background" Style=" padding: 24px; margin: 0; min-height: 280px;">
-                Content
-            </Content>
-        </Layout>
-    </Layout>
+                </Menu>
 
-    <Footer Style="position: fixed; bottom: 0; z-index: 1; width: 100%; height:48px; padding: 0;">
+                <Layout Class="app-content">
+                    <Content Class="app-content-item">
+                        <Watermark Content="Hello World">
+                            <div class="app-content-mask"/>
+                        </Watermark>
+                    </Content>
+                </Layout>
+            </Layout>
+            break;
+        default:
+            throw new ArgumentOutOfRangeException();
+    }
+
+    <Footer Class="app-footer">
         <JoyStatusPage/>
     </Footer>
 </Layout>
 
+<AntContainer/>
 
 <style>
-    .site-layout-background {
+    .app-header {
+        z-index: 1;
+        position: fixed;
+        width: 100%;
+        height: @(HeaderHeight)px;
+        padding: 0 @(ContentPadding)px;
+    }
+
+    .app-header-item {
+        min-width: @(MenuWidth - ContentPadding - 1)px;
+        font-size: 120%;
+    }
+
+    .app-footer {
+        z-index: 1;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        height: @(FooterHeight)px;
+        padding: 0;
+    }
+
+    .app-layout {
+        padding: @(HeaderHeight)px 0 @(FooterHeight)px;
+    }
+
+    .app-menu {
+        width: @(MenuWidth)px;
+        height: calc(100vh - @(HeaderHeight)px - @(FooterHeight)px);
+        overflow: auto;
+        position: fixed;
+        direction: rtl;
+    }
+
+    .app-menu-item {
+        /* the width must be 1px less than container */
+        /* more padding to avoid overflow when scrollbar appears */
+        width: @(MenuWidth - ContentPadding)px !important;
+        direction: ltr;
+    }
+
+    .app-content {
+        padding: @(ContentPadding)px /* top */
+        @(ContentPadding)px /* right */
+        @(ContentPadding)px /* bottom */
+        @(ContentPadding + MenuWidth)px; /* left */
+    }
+
+    .app-content-item {
         background: #fff;
+        padding: @(ContentPadding)px;
+    }
+
+    .app-content-mask {
+        height: calc(100vh - @(HeaderHeight)px - @(FooterHeight)px - 4 * @(ContentPadding)px);
     }
 </style>
 
-<AntContainer/>
+@code {
+
+    enum MenuBar
+    {
+        JoyWatcher,
+        Development,
+    }
+
+    struct Menu
+    {
+        public MenuBar Key { get; init; }
+        public string Title { get; init; }
+    }
+
+    private readonly Menu[] _menus =
+    [
+        new Menu { Key = MenuBar.JoyWatcher, Title = "Joysticks Watcher" },
+        new Menu { Key = MenuBar.Development, Title = "Developer Page" }
+    ];
+
+    private MenuBar _menuActive = MenuBar.JoyWatcher;
+
+    // Style Constants
+    private const int HeaderHeight = 64;
+    private const int FooterHeight = 48;
+    private const int MenuWidth = 200;
+    private const int ContentPadding = 24;
+}
+
