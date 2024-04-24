@@ -1,4 +1,7 @@
-﻿@using MIDIvJoy.Services.Joysticks
+﻿@using MIDIvJoy.Models.DataModels
+@using MIDIvJoy.ViewModels
+
+@inject JoyStatusViewModel ViewModel
 
 <style>
     .status-note {
@@ -29,7 +32,7 @@
 
     .status-container {
         display: grid;
-        grid-template-columns: repeat(@_blocks, 1fr);
+        grid-template-columns: repeat(@ViewModel.Status.Length, 1fr);
         width: 100vw;
         gap: 2px;
     }
@@ -78,93 +81,55 @@
     }
 </style>
 
-@{
-    var status = new JoyStatus[16];
-
-    for (uint id = 1; id <= 16; id++)
-    {
-        status[id - 1] = _m.GetJoystick(id)?.Status ?? JoyStatus.Unknown;
-    }
-
-    var unknownCount = status.Count(s => s == JoyStatus.Unknown);
-    if (unknownCount == 16)
-    {
-        <div class="status-note status-warning">WARNING: vJoy is not enabled!</div>
-    }
-    else if (_m.VersionDll != _m.VersionDrv)
-    {
-        <div class="status-note status-warning">
-            WARNING: DLL version @($"{_m.VersionDll:X}") does not match driver version @($"{_m.VersionDrv:X}")!
-        </div>
-    }
-    else
-    {
+@switch (ViewModel.Bar)
+{
+    case BarType.Info:
         <div class="status-note">
             <span>Click on a vJoy to acquire or release it.</span>
-            <small>Driver version: @($"{_m.VersionDrv:X}")</small>
+            <small>Driver version: @($"{ViewModel.VersionDll:X}")</small>
+        </div>
+        break;
+    case BarType.Warning:
+        Console.WriteLine("Warning");
+        <div class="status-note status-warning">
+            WARNING: DLL version @($"{ViewModel.VersionDll:X}") does not
+            match driver version @($"{ViewModel.VersionDrv:X}")!
+        </div>
+        break;
+    case BarType.Error:
+        Console.WriteLine("Error");
+        <div class="status-note status-warning">WARNING: vJoy is not enabled!</div>
+        break;
+    default:
+        throw new ArgumentOutOfRangeException();
+}
+
+<div class="status-container">
+    @for (var i = 0; i < ViewModel.Status.Length; i++)
+    {
+        var id = i + 1;
+        var icon = ViewModel.Status[i] switch
+        {
+            JoystickStatus.Free => "plus-square",
+            JoystickStatus.Engaged => "check-square",
+            JoystickStatus.Occupied => "minus-square",
+            _ => "close-square",
+        };
+
+        <div class="status-block status-@ViewModel.Status[i]" @onclick="() => ViewModel.ToggleActive(id)">
+            <Icon Type=@icon Theme="outline" Style="font-size: 24px;"/>
+            <div class="status-info">@(ViewModel.Status[i] != JoystickStatus.Unknown ? ViewModel.Status[i] : id)</div>
+            <div class="status-num">@id</div>
         </div>
     }
-
-    // display 8 blocks instead of 16 if there are more than 8 unknown joysticks.
-    unknownCount = status[8..].Count(s => s == JoyStatus.Unknown);
-    var blocks = unknownCount == 8 ? 8 : 16;
-    if (blocks != _blocks)
-    {
-        _blocks = blocks;
-        StateHasChanged();
-    }
-
-    <div class="status-container">
-        @for (uint i = 0; i < blocks; i++)
-        {
-            var id = i + 1;
-            var icon = status[i] switch
-            {
-                JoyStatus.Free => "plus-square",
-                JoyStatus.Engaged => "check-square",
-                JoyStatus.Occupied => "minus-square",
-                _ => "close-square",
-            };
-
-            <div class="status-block status-@status[i]" onclick="@ToggleActive(id)">
-                <Icon Type=@icon Theme="outline" Style="font-size: 24px;"/>
-                <div class="status-info">@(status[i] != JoyStatus.Unknown ? status[i] : id)</div>
-                <div class="status-num">@id</div>
-            </div>
-        }
-    </div>}
+</div>
 
 @code {
-    private readonly JoyManager _m = JoyManager.GetInstance();
-    private int _blocks;
 
     protected override void OnInitialized()
     {
-        base.OnInitialized();
-        for (uint id = 1; id <= 16; id++)
-        {
-            _m.SubscribeToJoystickStatusChanges(id, (_, _) => InvokeAsync(StateHasChanged));
-        }
-    }
-
-    private Action ToggleActive(uint id)
-    {
-        var vj = _m.GetJoystick(id);
-        if (vj == null) return () => { };
-
-        return () =>
-        {
-            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-            switch (vj.Status)
-            {
-                case JoyStatus.Free:
-                    vj.Acquire();
-                    break;
-                case JoyStatus.Engaged:
-                    vj.Release();
-                    break;
-            }
-        };
+        ViewModel.OnInitialized();
+        ViewModel.StateHasChanged += () => InvokeAsync(StateHasChanged);
     }
 
 }

@@ -11,6 +11,14 @@
     flex-direction: column;
 }
 
+#loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: dimgrey;
+}
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

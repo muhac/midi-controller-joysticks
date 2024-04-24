@@ -1,4 +1,6 @@
-﻿@using MIDIvJoy.Services.Joysticks
+﻿@using MIDIvJoy.ViewModels
+
+@inject JoyWatcherViewModel ViewModel
 
 <style>
     .watcher-container {
@@ -25,20 +27,14 @@
 
 <Layout Class="app-layout">
     <Menu Class="app-menu" Mode="MenuMode.Inline"
-          DefaultSelectedKeys=@(new[] { $"{_deviceId}" })>
+          DefaultSelectedKeys=@(new[] { ViewModel.DeviceId.ToString() })>
 
-        @{
-            for (uint id = 1; id <= 16; id++)
-            {
-                var joystick = _m.GetJoystick(id);
-                if (joystick == null || joystick.Status == JoyStatus.Unknown) continue;
-
-                var key = id;
-                <MenuItem Class="app-menu-item" Key=@key.ToString()
-                          OnClick="@(_ => SwitchId(key))">
-                    Device @key (@joystick.Status)
-                </MenuItem>
-            }
+        @foreach (var device in ViewModel.DevicesAvailable)
+        {
+            <MenuItem Class="app-menu-item" Key=@device.Id.ToString()
+                      OnClick="@(_ => ViewModel.SwitchId(device.Id))">
+                Device @device.Id (@device.Status)
+            </MenuItem>
         }
 
     </Menu>
@@ -47,36 +43,36 @@
         <Content Class="app-content-item watcher-container">
             <Breadcrumb Style="margin: 0 0 12px;">
                 <BreadcrumbItem>Virtual Joystick Device</BreadcrumbItem>
-                <BreadcrumbItem>@_deviceId</BreadcrumbItem>
+                <BreadcrumbItem>@ViewModel.DeviceId</BreadcrumbItem>
             </Breadcrumb>
 
-            @if (_state.Ok)
+            @if (ViewModel.IsDisplayData)
             {
-                <Divider Orientation="left">Axes (@_shownState.Axes.Count(x => x.Enabled))</Divider>
+                <Divider Orientation="left">Axes (@ViewModel.DisplayState.Axes.Count(x => x.Enabled))</Divider>
                 <GridRow Gutter="(8, 6)" OnBreakpoint="() => StateHasChanged()">
 
-                    @foreach (var axis in _shownState.Axes)
+                    @foreach (var axis in ViewModel.DisplayState.Axes)
                     {
                         <GridCol Span="5" Md="3" Xxl="1" Class="watcher-text-center watcher-text-bold"
-                                 Lg=" new EmbeddedProperty { Span = 2,  Order = axis.DisplayIndex2Col }">
-                            @axis.DisplayName
+                                 Lg=" new EmbeddedProperty { Span = 2, Order = axis.Index2Col }">
+                            @axis.Name
                         </GridCol>
                         <GridCol Span="14" Md="18" Xxl="10" Class="watcher-text-center"
-                                 Lg="new EmbeddedProperty { Span = 8, Order = axis.DisplayIndex2Col }">
-                            <Progress Percent="@axis.Percent" Status="@ProgressStatus.Active" ShowInfo="false"></Progress>
+                                 Lg="new EmbeddedProperty { Span = 8, Order = axis.Index2Col }">
+                            <Progress Percent="@(axis.Enabled ? axis.Percent : 0)" Status="@ProgressStatus.Active" ShowInfo="false"></Progress>
                         </GridCol>
                         <GridCol Span="5" Md="3" Xxl="1" Class="watcher-text-center"
-                                 Lg="new EmbeddedProperty { Span = 2, Order = axis.DisplayIndex2Col }">
+                                 Lg="new EmbeddedProperty { Span = 2, Order = axis.Index2Col }">
                             @(axis.Enabled ? axis.Value : "N/A")
                         </GridCol>
                     }
 
                 </GridRow>
 
-                <Divider Orientation="left">Buttons (@_shownState.ButtonNumber)</Divider>
+                <Divider Orientation="left">Buttons (@ViewModel.DisplayState.ButtonNumber)</Divider>
                 <GridRow Gutter="(8, 6)">
 
-                    @foreach (var (state, index) in _shownState.ButtonStates.Select((x, i) => (x, i)))
+                    @foreach (var (state, index) in ViewModel.DisplayState.ButtonStates.Select((x, i) => (x, i)))
                     {
                         <GridCol Span="3" Md="2" Lg="1" Class="watcher-text-center">
                             <Tag Style="width: 100%; padding: 0" Color="@(state ? "blue-inverse" : "default")">
@@ -90,7 +86,7 @@
             else
             {
                 <div class="watcher-vcenter-container">
-                    <Result Status="warning" Title="@($"vJoy device {_deviceId} is not engaged.")"/>
+                    <Result Status="warning" Title="@($"vJoy device {ViewModel.DeviceId} is not engaged.")"/>
                 </div>
             }
         </Content>
@@ -98,247 +94,11 @@
 </Layout>
 
 @code {
-    private uint _deviceId = 1;
-
-    private void SwitchId(uint id)
-    {
-        _deviceId = id;
-        Watch(null);
-    }
-
-    private Timer _timer;
 
     protected override void OnInitialized()
     {
-        base.OnInitialized();
-        _timer = new Timer(Watch, null, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
-        for (uint id = 1; id <= 16; id++)
-        {
-            _m.SubscribeToJoystickStatusChanges(id, (_, _) => InvokeAsync(StateHasChanged));
-        }
-    }
-
-    private readonly JoyManager _m = JoyManager.GetInstance();
-    private JoyState _state = new();
-
-    private async void Watch(object? _)
-    {
-        var vj = _m.GetJoystick(_deviceId);
-        if (vj == null) return;
-
-        if (vj.UpdateStatus() == JoyStatus.Engaged)
-        {
-            vj.ShowState(ref _state);
-        }
-        else if (!_state.Ok)
-        {
-            return;
-        }
-        else
-        {
-            _state.Ok = false;
-        }
-
-        UpdateState();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    struct ShownState
-    {
-        public ShownStateAxis[] Axes;
-
-        public int ButtonNumber;
-        public bool[] ButtonStates;
-    }
-
-    struct ShownStateAxis
-    {
-        public string DisplayName;
-        public int DisplayIndex1Col;
-        public int DisplayIndex2Col;
-
-        public bool Enabled;
-        public int Value;
-        public double Percent;
-    }
-
-    private ShownState _shownState = new() { Axes = [] };
-
-    private void UpdateState()
-    {
-        _shownState = new ShownState
-        {
-            Axes =
-            [
-                new ShownStateAxis
-                {
-                    DisplayName = "X",
-                    DisplayIndex1Col = 1,
-                    DisplayIndex2Col = 1,
-                    Enabled = _state.AxisXEnabled,
-                    Value = _state.AxisX,
-                    Percent = GetPercent(_state.AxisX),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Y",
-                    DisplayIndex1Col = 2,
-                    DisplayIndex2Col = 3,
-                    Enabled = _state.AxisYEnabled,
-                    Value = _state.AxisY,
-                    Percent = GetPercent(_state.AxisY),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Z",
-                    DisplayIndex1Col = 3,
-                    DisplayIndex2Col = 5,
-                    Enabled = _state.AxisZEnabled,
-                    Value = _state.AxisZ,
-                    Percent = GetPercent(_state.AxisZ),
-                },
-
-                new ShownStateAxis
-                {
-                    DisplayName = "X Rot",
-                    DisplayIndex1Col = 4,
-                    DisplayIndex2Col = 2,
-                    Enabled = _state.AxisXRotEnabled,
-                    Value = _state.AxisXRot,
-                    Percent = GetPercent(_state.AxisXRot),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Y Rot",
-                    DisplayIndex1Col = 5,
-                    DisplayIndex2Col = 4,
-                    Enabled = _state.AxisYRotEnabled,
-                    Value = _state.AxisYRot,
-                    Percent = GetPercent(_state.AxisYRot),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Z Rot",
-                    DisplayIndex1Col = 6,
-                    DisplayIndex2Col = 6,
-                    Enabled = _state.AxisZRotEnabled,
-                    Value = _state.AxisZRot,
-                    Percent = GetPercent(_state.AxisZRot),
-                },
-
-                new ShownStateAxis
-                {
-                    DisplayName = "Slider",
-                    DisplayIndex1Col = 7,
-                    DisplayIndex2Col = 7,
-                    Enabled = _state.AxisSliderEnabled,
-                    Value = _state.AxisSlider,
-                    Percent = GetPercent(_state.AxisSlider),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Dial",
-                    DisplayIndex1Col = 8,
-                    DisplayIndex2Col = 9,
-                    Enabled = _state.AxisDialEnabled,
-                    Value = _state.AxisDial,
-                    Percent = GetPercent(_state.AxisDial),
-                },
-
-                new ShownStateAxis
-                {
-                    DisplayName = "Throttle",
-                    DisplayIndex1Col = 9,
-                    DisplayIndex2Col = 11,
-                    Enabled = _state.AxisThrottleEnabled,
-                    Value = _state.AxisThrottle,
-                    Percent = GetPercent(_state.AxisThrottle),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Rudder",
-                    DisplayIndex1Col = 10,
-                    DisplayIndex2Col = 13,
-                    Enabled = _state.AxisRudderEnabled,
-                    Value = _state.AxisRudder,
-                    Percent = GetPercent(_state.AxisRudder),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Aileron",
-                    DisplayIndex1Col = 11,
-                    DisplayIndex2Col = 15,
-                    Enabled = _state.AxisAileronEnabled,
-                    Value = _state.AxisAileron,
-                    Percent = GetPercent(_state.AxisAileron),
-                },
-
-                new ShownStateAxis
-                {
-                    DisplayName = "Wheel",
-                    DisplayIndex1Col = 12,
-                    DisplayIndex2Col = 8,
-                    Enabled = _state.AxisWheelEnabled,
-                    Value = _state.AxisWheel,
-                    Percent = GetPercent(_state.AxisWheel),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Acc",
-                    DisplayIndex1Col = 13,
-                    DisplayIndex2Col = 10,
-                    Enabled = _state.AxisAcceleratorEnabled,
-                    Value = _state.AxisAccelerator,
-                    Percent = GetPercent(_state.AxisAccelerator),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Brake",
-                    DisplayIndex1Col = 14,
-                    DisplayIndex2Col = 12,
-                    Enabled = _state.AxisBrakeEnabled,
-                    Value = _state.AxisBrake,
-                    Percent = GetPercent(_state.AxisBrake),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Clutch",
-                    DisplayIndex1Col = 15,
-                    DisplayIndex2Col = 14,
-                    Enabled = _state.AxisClutchEnabled,
-                    Value = _state.AxisClutch,
-                    Percent = GetPercent(_state.AxisClutch),
-                },
-                new ShownStateAxis
-                {
-                    DisplayName = "Steering",
-                    DisplayIndex1Col = 16,
-                    DisplayIndex2Col = 16,
-                    Enabled = _state.AxisSteeringEnabled,
-                    Value = _state.AxisSteering,
-                    Percent = GetPercent(_state.AxisSteering),
-                }
-            ],
-
-            ButtonNumber = _state.ButtonNumber,
-            ButtonStates = new bool[_state.ButtonNumber],
-        };
-
-        var buttonStates = _state.ButtonStates;
-        for (var i = 0; i < _state.ButtonNumber; i++)
-        {
-            _shownState.ButtonStates[i] = (buttonStates & 1 << i) != 0;
-        }
-    }
-
-    private double GetPercent(int value)
-    {
-        var min = _state.AxisMin;
-        var max = _state.AxisMax;
-        var pct = (double)(value - min) / (max - min) * 100;
-
-        // the ui lib has a bug to display 100% in a different style
-        return double.Max(double.Min(pct, 99.9999), 0.0001);
+        ViewModel.OnInitialized();
+        ViewModel.StateHasChanged += () => InvokeAsync(StateHasChanged);
     }
 
 }
