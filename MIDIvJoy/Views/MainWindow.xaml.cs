@@ -36,8 +36,9 @@ public partial class MainWindow : Window
         serviceCollection.AddSingleton<IJoysticks, JoyManager>();
 
         // ViewModels
-        serviceCollection.AddTransient<JoyStatusViewModel>();
-        serviceCollection.AddTransient<JoyWatcherViewModel>();
+        serviceCollection.AddSingleton<JoyStatusViewModel>();
+        serviceCollection.AddSingleton<JoyWatcherViewModel>();
+        serviceCollection.AddSingleton<MidiConfigViewModel>();
 
         Resources.Add("services", serviceCollection.BuildServiceProvider());
     }

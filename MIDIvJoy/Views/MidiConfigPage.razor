@@ -1,0 +1,87 @@
+﻿@using MIDIvJoy.ViewModels
+
+@inject MidiConfigViewModel ViewModel
+
+<style>
+    .config-container {
+        display: grid;
+        overflow: auto;
+        align-content: start;
+    }
+
+    .config-text-center {
+        text-align: center;
+    }
+
+    .config-text-bold {
+        font-weight: 500;
+    }
+
+    .config-vcenter-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 300px);
+    }
+</style>
+
+<Layout Class="app-layout">
+    <Menu Class="app-menu" Mode="MenuMode.Inline"
+          DefaultSelectedKeys="@(new[] { ViewModel.DeviceId.ToString() })">
+
+        @if (ViewModel.DevicesAvailable.Length == 0)
+        {
+            <MenuItem Class="app-menu-item" Disabled>
+                No Device
+            </MenuItem>
+        }
+        @foreach (var device in ViewModel.DevicesAvailable)
+        {
+            <MenuItem Class="app-menu-item" Key=@device.Id.ToString()
+                      OnClick="@(_ => ViewModel.SwitchId(device.Id))">
+                @device.Name
+            </MenuItem>
+        }
+
+    </Menu>
+
+    <Layout Class="app-content">
+        <Content Class="app-content-item config-container">
+            <Breadcrumb Style="margin: 0 0 12px;">
+                <BreadcrumbItem>MIDI Device</BreadcrumbItem>
+                <BreadcrumbItem>@GetCurrentDeviceName()</BreadcrumbItem>
+            </Breadcrumb>
+
+            @if (ViewModel.DevicesAvailable.Length > 0)
+            {
+                <Divider Orientation="left">Unassigned</Divider>
+            }
+            else
+            {
+                <div class="config-vcenter-container">
+                    <Result Status="warning" Title="No MIDI Controller Available."/>
+                </div>
+            }
+        </Content>
+    </Layout>
+</Layout>
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        ViewModel.OnInitialized();
+        ViewModel.StateHasChanged += () => InvokeAsync(StateHasChanged);
+    }
+
+    private string GetCurrentDeviceName()
+    {
+        if (ViewModel.DeviceId < 0 || ViewModel.DeviceId >= ViewModel.DevicesAvailable.Length)
+        {
+            return "Unknown";
+        }
+
+        return ViewModel.DevicesAvailable[ViewModel.DeviceId].Name;
+    }
+
+}

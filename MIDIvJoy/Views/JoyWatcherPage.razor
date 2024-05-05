@@ -27,13 +27,19 @@
 
 <Layout Class="app-layout">
     <Menu Class="app-menu" Mode="MenuMode.Inline"
-          DefaultSelectedKeys=@(new[] { ViewModel.DeviceId.ToString() })>
+          DefaultSelectedKeys="@(new[] { ViewModel.DeviceId.ToString() })">
 
+        @if (ViewModel.DevicesAvailable.Length == 0)
+        {
+            <MenuItem Class="app-menu-item" Disabled>
+                No Device
+            </MenuItem>
+        }
         @foreach (var device in ViewModel.DevicesAvailable)
         {
             <MenuItem Class="app-menu-item" Key=@device.Id.ToString()
                       OnClick="@(_ => ViewModel.SwitchId(device.Id))">
-                Device @device.Id (@device.Status)
+                Joystick @device.Id (@device.Status)
             </MenuItem>
         }
 
@@ -42,8 +48,8 @@
     <Layout Class="app-content">
         <Content Class="app-content-item watcher-container">
             <Breadcrumb Style="margin: 0 0 12px;">
-                <BreadcrumbItem>Virtual Joystick Device</BreadcrumbItem>
-                <BreadcrumbItem>@ViewModel.DeviceId</BreadcrumbItem>
+                <BreadcrumbItem>Virtual Joystick</BreadcrumbItem>
+                <BreadcrumbItem>Device @ViewModel.DeviceId</BreadcrumbItem>
             </Breadcrumb>
 
             @if (ViewModel.IsDisplayData)
@@ -86,7 +92,7 @@
             else
             {
                 <div class="watcher-vcenter-container">
-                    <Result Status="warning" Title="@($"vJoy device {ViewModel.DeviceId} is not engaged.")"/>
+                    <Result Status="warning" Title="This vJoy device is not engaged."/>
                 </div>
             }
         </Content>

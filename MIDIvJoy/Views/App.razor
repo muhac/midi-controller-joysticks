@@ -18,27 +18,8 @@
         case MenuBar.JoyWatcher:
             <JoyWatcherPage/>
             break;
-        case MenuBar.Development:
-            <Layout Class="app-layout">
-                <Menu Class="app-menu" Mode="MenuMode.Inline"
-                      DefaultSelectedKeys=@(new[] { "1" })>
-
-                    @for (var i = 0; i < 2; i++)
-                    {
-                        var key = (i + 1).ToString();
-                        <MenuItem class="app-menu-item" Key=@key>Dev Page @key</MenuItem>
-                    }
-
-                </Menu>
-
-                <Layout Class="app-content">
-                    <Content Class="app-content-item">
-                        <Watermark Content="Hello World">
-                            <div class="app-content-mask"/>
-                        </Watermark>
-                    </Content>
-                </Layout>
-            </Layout>
+        case MenuBar.MidiConfig:
+            <MidiConfigPage/>
             break;
         default:
             throw new ArgumentOutOfRangeException();
@@ -116,7 +97,7 @@
     enum MenuBar
     {
         JoyWatcher,
-        Development,
+        MidiConfig,
     }
 
     struct Menu
@@ -127,11 +108,11 @@
 
     private readonly Menu[] _menus =
     [
+        new Menu { Key = MenuBar.MidiConfig, Title = "MIDI Key Bindings" },
         new Menu { Key = MenuBar.JoyWatcher, Title = "Joysticks Watcher" },
-        new Menu { Key = MenuBar.Development, Title = "Developer Page" }
     ];
 
-    private MenuBar _menuActive = MenuBar.JoyWatcher;
+    private MenuBar _menuActive = MenuBar.MidiConfig;
 
     // Style Constants
     private const int HeaderHeight = 64;

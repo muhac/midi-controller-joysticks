@@ -3,23 +3,23 @@ using MIDIvJoy.Models.Joysticks;
 
 namespace MIDIvJoy.ViewModels;
 
-public struct Device
+public struct JoyDevice
 {
     public int Id;
     public JoystickStatus Status;
 }
 
-public struct State
+public struct JoyState
 {
     public bool Ok;
 
-    public StateAxis[] Axes;
+    public JoyStateAxis[] Axes;
 
     public int ButtonNumber;
     public bool[] ButtonStates;
 }
 
-public struct StateAxis
+public struct JoyStateAxis
 {
     public string Name;
     public int Index2Col;
@@ -31,11 +31,11 @@ public struct StateAxis
 
 public class JoyWatcherViewModel(IJoysticks m)
 {
-    public Device[] DevicesAvailable { get; private set; } = [];
+    public JoyDevice[] DevicesAvailable { get; private set; } = [];
     public int DeviceId { get; private set; } = 1;
 
     public bool IsDisplayData { get; private set; }
-    public State DisplayState { get; private set; } = new() { Ok = false };
+    public JoyState DisplayState { get; private set; } = new() { Ok = false };
 
     private Timer? _timer;
 
@@ -44,17 +44,13 @@ public class JoyWatcherViewModel(IJoysticks m)
         UpdateIds();
         DeviceId = DevicesAvailable.Select(device => device.Id).DefaultIfEmpty(1).First();
 
+        _timer?.Dispose();
         _timer = new Timer(Watch, 1, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
         Watch(true);
 
         Enumerable.Range(1, m.GetJoystickCount())
             .ToList()
             .ForEach(id => m.GetJoystick(id).StatusChanged += OnStatusChanged);
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
     }
 
     private void OnStatusChanged(object? sender, JoystickStatusEventArgs e)
@@ -70,7 +66,7 @@ public class JoyWatcherViewModel(IJoysticks m)
             .ToArray();
 
         DevicesAvailable = Enumerable.Range(1, m.GetJoystickCount())
-            .Select(id => new Device { Id = id, Status = status[id - 1] })
+            .Select(id => new JoyDevice { Id = id, Status = status[id - 1] })
             .Where(device => device.Status != JoystickStatus.Unknown)
             .ToArray();
     }
@@ -93,18 +89,18 @@ public class JoyWatcherViewModel(IJoysticks m)
     }
 
 
-    private State FormatState()
+    private JoyState FormatState()
     {
         var joystick = m.GetJoystick(DeviceId);
         var hw = joystick.GetHardware();
         var state = joystick.GetState();
 
-        var displayState = new State
+        var displayState = new JoyState
         {
             Ok = state.Ok,
             Axes =
             [
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "X",
                     Index2Col = 1,
@@ -113,7 +109,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Percent = GetPercent(state.AxisX),
                 },
 
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Y",
                     Index2Col = 3,
@@ -121,7 +117,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisY,
                     Percent = GetPercent(state.AxisY),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Z",
                     Index2Col = 5,
@@ -130,7 +126,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Percent = GetPercent(state.AxisZ),
                 },
 
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "X Rot",
                     Index2Col = 2,
@@ -138,7 +134,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisXRot,
                     Percent = GetPercent(state.AxisXRot),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Y Rot",
                     Index2Col = 4,
@@ -146,7 +142,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisYRot,
                     Percent = GetPercent(state.AxisYRot),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Z Rot",
                     Index2Col = 6,
@@ -155,7 +151,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Percent = GetPercent(state.AxisZRot),
                 },
 
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Slider",
                     Index2Col = 7,
@@ -163,7 +159,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisSlider,
                     Percent = GetPercent(state.AxisSlider),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Dial",
                     Index2Col = 9,
@@ -172,7 +168,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Percent = GetPercent(state.AxisDial),
                 },
 
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Throttle",
                     Index2Col = 11,
@@ -180,7 +176,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisThrottle,
                     Percent = GetPercent(state.AxisThrottle),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Rudder",
                     Index2Col = 13,
@@ -188,7 +184,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisRudder,
                     Percent = GetPercent(state.AxisRudder),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Aileron",
                     Index2Col = 15,
@@ -197,7 +193,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Percent = GetPercent(state.AxisAileron),
                 },
 
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Wheel",
                     Index2Col = 8,
@@ -205,7 +201,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisWheel,
                     Percent = GetPercent(state.AxisWheel),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Acc",
                     Index2Col = 10,
@@ -213,7 +209,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisAccelerator,
                     Percent = GetPercent(state.AxisAccelerator),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Brake",
                     Index2Col = 12,
@@ -221,7 +217,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisBrake,
                     Percent = GetPercent(state.AxisBrake),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Clutch",
                     Index2Col = 14,
@@ -229,7 +225,7 @@ public class JoyWatcherViewModel(IJoysticks m)
                     Value = state.AxisClutch,
                     Percent = GetPercent(state.AxisClutch),
                 },
-                new StateAxis
+                new JoyStateAxis
                 {
                     Name = "Steering",
                     Index2Col = 16,
