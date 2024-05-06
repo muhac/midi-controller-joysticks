@@ -29,28 +29,33 @@ public struct JoyStateAxis
     public double Percent;
 }
 
-public class JoyWatcherViewModel(IJoysticks m)
+public class JoyWatcherViewModel
 {
+    public JoyWatcherViewModel(IJoysticks m)
+    {
+        _m = m;
+
+        _t = new Timer(Watch, 1, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
+        Watch(true);
+
+        Enumerable.Range(1, _m.GetJoystickCount())
+            .ToList()
+            .ForEach(id => _m.GetJoystick(id).StatusChanged += OnStatusChanged);
+    }
+
+    private readonly IJoysticks _m;
+    private readonly Timer _t;
+
     public JoyDevice[] DevicesAvailable { get; private set; } = [];
     public int DeviceId { get; private set; } = 1;
 
     public bool IsDisplayData { get; private set; }
     public JoyState DisplayState { get; private set; } = new() { Ok = false };
 
-    private Timer? _timer;
-
     public void OnInitialized()
     {
         UpdateIds();
         DeviceId = DevicesAvailable.Select(device => device.Id).DefaultIfEmpty(1).First();
-
-        _timer?.Dispose();
-        _timer = new Timer(Watch, 1, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
-        Watch(true);
-
-        Enumerable.Range(1, m.GetJoystickCount())
-            .ToList()
-            .ForEach(id => m.GetJoystick(id).StatusChanged += OnStatusChanged);
     }
 
     private void OnStatusChanged(object? sender, JoystickStatusEventArgs e)
@@ -61,11 +66,11 @@ public class JoyWatcherViewModel(IJoysticks m)
 
     private void UpdateIds()
     {
-        var status = Enumerable.Range(1, m.GetJoystickCount())
-            .Select(id => m.GetJoystick(id).GetStatus())
+        var status = Enumerable.Range(1, _m.GetJoystickCount())
+            .Select(id => _m.GetJoystick(id).GetStatus())
             .ToArray();
 
-        DevicesAvailable = Enumerable.Range(1, m.GetJoystickCount())
+        DevicesAvailable = Enumerable.Range(1, _m.GetJoystickCount())
             .Select(id => new JoyDevice { Id = id, Status = status[id - 1] })
             .Where(device => device.Status != JoystickStatus.Unknown)
             .ToArray();
@@ -88,10 +93,9 @@ public class JoyWatcherViewModel(IJoysticks m)
         StateHasChanged();
     }
 
-
     private JoyState FormatState()
     {
-        var joystick = m.GetJoystick(DeviceId);
+        var joystick = _m.GetJoystick(DeviceId);
         var hw = joystick.GetHardware();
         var state = joystick.GetState();
 
@@ -255,7 +259,6 @@ public class JoyWatcherViewModel(IJoysticks m)
             return double.Max(double.Min(pct, 99.9999), 0.0001);
         }
     }
-
 
     public event Action StateHasChanged = delegate { };
 }

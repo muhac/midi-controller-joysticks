@@ -1,122 +1,148 @@
-﻿using NAudio.Midi;
+﻿using Microsoft.AspNetCore.Components.Web;
+using MIDIvJoy.Models.DataModels;
+using MIDIvJoy.Models.MidiDevices;
 
 namespace MIDIvJoy.ViewModels;
 
-public struct MidiDevice
+public struct MidiDeviceInfo
 {
-    public int Id;
+    public string Id;
     public string Name;
-    internal MidiIn? Handler { get; init; }
 }
 
 public class MidiConfigViewModel
 {
-    private readonly ReaderWriterLockSlim _devicesLock = new();
-    public MidiDevice[] DevicesAvailable { get; private set; } = [];
-    public int DeviceId { get; private set; }
+    public MidiConfigViewModel(IMidiDevices m, IMidiController c)
+    {
+        _m = m;
+        _c = c;
 
-    private Timer? _timer;
+        _m.EventReceived += OnCommandsReceived;
+        _c.CommandsChanged += OnCommandsChanged;
+
+        _t = new Timer(Watch, null, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
+    }
+
+    private readonly IMidiDevices _m;
+    private readonly IMidiController _c;
+    private Timer _t;
+
+    public MidiDeviceInfo[] DevicesAvailable { get; private set; } = [];
+    public string DeviceId { get; private set; } = "NA";
+
+    private Command[] _commands = [];
+
+    public Command[] CommandsAxis => _commands
+        .Where(cmd => cmd.Type == ControllerType.Axis)
+        .Where(cmd => cmd.DeviceKey == DeviceId)
+        .OrderBy(cmd => cmd.Name)
+        .ToArray();
+
+    public Command[] CommandsButton => _commands
+        .Where(cmd => cmd.Type == ControllerType.Button)
+        .Where(cmd => cmd.DeviceKey == DeviceId)
+        .OrderBy(cmd => cmd.Name)
+        .ToArray();
+
+    public Command[] CommandsUnbinded => _commands
+        .Where(cmd => cmd.Type == ControllerType.None)
+        .Where(cmd => cmd.DeviceKey == DeviceId)
+        .OrderBy(cmd => cmd.Name)
+        .ToArray();
+
+    public bool IsSettingsVisible { get; private set; }
+    public bool IsSettingsLoading { get; private set; }
+    public Command? CommandReceived { get; private set; }
+    public Command? CommandSelected { get; private set; }
+    public Command? CommandEditing { get; private set; }
 
     public void OnInitialized()
     {
         UpdateDevices();
-
-        _timer?.Dispose(); // OnInitialized is called every time the page is loaded
-        _timer = new Timer(Watch, null, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
+        UpdateCommands();
     }
 
-    public void SwitchId(int id)
+    public void SwitchId(string id)
     {
         DeviceId = id;
     }
 
     private void Watch(object? _)
     {
-        if (MidiIn.NumberOfDevices == DevicesAvailable.Length) return;
+        if (_m.GetMidiDevicesCount() == DevicesAvailable.Length) return;
 
         UpdateDevices();
         StateHasChanged();
     }
 
-    private static MidiIn? Listen(int id)
-    {
-        try
-        {
-            var handler = new MidiIn(id);
-            handler.MessageReceived += MessageReceived(id);
-            handler.ErrorReceived += ErrorReceived(id);
-            handler.Start();
-            return handler;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"{id}: {e.Message}");
-            return null;
-        }
-    }
-
-    private static void Dispose(MidiDevice device)
-    {
-        try
-        {
-            device.Handler?.Stop();
-            device.Handler?.Dispose();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"{device.Name}: {e.Message}");
-        }
-    }
-
     private void UpdateDevices()
     {
-        _devicesLock.EnterWriteLock();
-
-        DevicesAvailable.ToList().ForEach(Dispose);
-        DevicesAvailable = Enumerable.Range(0, MidiIn.NumberOfDevices)
-            .Select(id => new MidiDevice
-            {
-                Id = id,
-                Name = MidiIn.DeviceInfo(id).ProductName,
-                Handler = Listen(id),
-            })
+        DevicesAvailable = _m.GetDevices()
+            .Select((device) => new MidiDeviceInfo { Id = device.Key, Name = device.Info.ProductName })
+            //.OrderBy(device => device.Name)
             .ToArray();
 
-        _devicesLock.ExitWriteLock();
-
         Console.WriteLine("Available MIDI Devices: " + DevicesAvailable.Length);
-        DeviceId = DevicesAvailable.Select(device => device.Id).DefaultIfEmpty(0).First();
+        DeviceId = DevicesAvailable.Select(device => device.Id).DefaultIfEmpty("NA").First();
     }
 
-    private static EventHandler<MidiInMessageEventArgs> MessageReceived(int id)
+    private void UpdateCommands()
     {
-        return (_, e) =>
-        {
-            switch (e.MidiEvent)
-            {
-                case ControlChangeEvent evt:
-                    Console.WriteLine($"Control Change {evt.Controller} {evt.ControllerValue}");
-                    break;
-                case NoteEvent evt:
-                    Console.WriteLine($"Note {evt.NoteName} {evt.NoteNumber} {evt.Velocity}");
-                    break;
-                case PitchWheelChangeEvent evt:
-                    Console.WriteLine($"Pitch Wheel {evt.Channel} {evt.Pitch}");
-                    break;
-                default:
-                    // other types of MIDI events unsupported yet
-                    Console.WriteLine($"Device {id} MIDI Message {e.MidiEvent.GetType()} Event {e.MidiEvent}");
-                    break;
-            }
-        };
+        _commands = _c.ListCommands();
     }
 
-    private static EventHandler<MidiInMessageEventArgs> ErrorReceived(int id)
+    private void OnCommandsChanged(object? sender, CommandEventArgs e)
     {
-        return (_, e) =>
+        UpdateCommands();
+        StateHasChanged();
+    }
+
+    private void OnCommandsReceived(object? sender, MidiEventArgs e)
+    {
+        var action = _c.GetAction(e.Command);
+
+        CommandReceived = action ?? e.Command;
+        if (Program.Instance.IsWindowActivated) StateHasChanged();
+
+        if (action is null)
         {
-            Console.WriteLine($"Device {id} MIDI Error Message 0x{e.RawMessage:X8} Event {e.MidiEvent}");
-        };
+            _c.AddCommand(e.Command);
+            return;
+        }
+
+        _ = _c.Trigger(action).Result;
+    }
+
+
+    public void SetCommand(Command cmd)
+    {
+        CommandSelected = cmd;
+        CommandEditing = cmd.DeepCopy();
+        IsSettingsVisible = true;
+    }
+
+    public async Task SetCommandSave(MouseEventArgs e)
+    {
+        IsSettingsLoading = true;
+        StateHasChanged();
+
+        if (
+            CommandEditing is not null && CommandSelected is not null &&
+            CommandEditing.KeyFuzzy.Equals(CommandSelected.KeyFuzzy)
+        )
+        {
+            _c.DelCommand(CommandSelected);
+            _c.AddCommand(CommandEditing);
+        }
+
+        IsSettingsVisible = false;
+        IsSettingsLoading = false;
+        StateHasChanged();
+    }
+
+    public void SetCommandCancel(MouseEventArgs e)
+    {
+        IsSettingsVisible = false;
     }
 
     public event Action StateHasChanged = delegate { };

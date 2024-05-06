@@ -13,7 +13,9 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.Extensions.DependencyInjection;
+using MIDIvJoy.Models.DataModels;
 using MIDIvJoy.Models.Joysticks;
+using MIDIvJoy.Models.MidiDevices;
 using MIDIvJoy.ViewModels;
 
 namespace MIDIvJoy.Views;
@@ -34,6 +36,8 @@ public partial class MainWindow : Window
 
         // Models
         serviceCollection.AddSingleton<IJoysticks, JoyManager>();
+        serviceCollection.AddSingleton<IMidiDevices, MidiManager>();
+        serviceCollection.AddSingleton<IMidiController, MidiController>();
 
         // ViewModels
         serviceCollection.AddSingleton<JoyStatusViewModel>();
@@ -41,5 +45,20 @@ public partial class MainWindow : Window
         serviceCollection.AddSingleton<MidiConfigViewModel>();
 
         Resources.Add("services", serviceCollection.BuildServiceProvider());
+
+        Activated += WindowActivated;
+        Deactivated += WindowDeactivated;
+    }
+
+    private static void WindowActivated(object? sender, EventArgs e)
+    {
+        Console.WriteLine("Window Activated");
+        Program.Instance.IsWindowActivated = true;
+    }
+
+    private static void WindowDeactivated(object? sender, EventArgs e)
+    {
+        Console.WriteLine("Window Deactivated");
+        Program.Instance.IsWindowActivated = false;
     }
 }

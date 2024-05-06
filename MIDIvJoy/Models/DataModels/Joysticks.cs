@@ -15,6 +15,13 @@ public class JoystickStatusEventArgs(JoystickStatus status) : EventArgs
     public JoystickStatus Status { get; } = status;
 }
 
+public enum ControllerType
+{
+    None,
+    Axis,
+    Button,
+}
+
 public enum JoystickAxis : uint
 {
     X = HID_USAGES.HID_USAGE_X,

@@ -1,4 +1,5 @@
-﻿@using MIDIvJoy.ViewModels
+﻿@using MIDIvJoy.Models.DataModels
+@using MIDIvJoy.ViewModels
 
 @inject MidiConfigViewModel ViewModel
 
@@ -27,7 +28,7 @@
 
 <Layout Class="app-layout">
     <Menu Class="app-menu" Mode="MenuMode.Inline"
-          DefaultSelectedKeys="@(new[] { ViewModel.DeviceId.ToString() })">
+          SelectedKeys="@(new[] { ViewModel.DeviceId })">
 
         @if (ViewModel.DevicesAvailable.Length == 0)
         {
@@ -37,7 +38,7 @@
         }
         @foreach (var device in ViewModel.DevicesAvailable)
         {
-            <MenuItem Class="app-menu-item" Key=@device.Id.ToString()
+            <MenuItem Class="app-menu-item" Key=@device.Id
                       OnClick="@(_ => ViewModel.SwitchId(device.Id))">
                 @device.Name
             </MenuItem>
@@ -54,7 +55,57 @@
 
             @if (ViewModel.DevicesAvailable.Length > 0)
             {
-                <Divider Orientation="left">Unassigned</Divider>
+                <Divider Orientation="left">Axis (@ViewModel.CommandsAxis.Length)</Divider>
+                <GridRow Gutter="(8, 8)">
+
+                    @foreach (var command in ViewModel.CommandsAxis)
+                    {
+                        var isTriggered = command.KeyExact.Equals(ViewModel.CommandReceived?.KeyExact);
+                        <GridCol Span="6" Md="4" Lg="3" Class="watcher-text-center">
+                            <Button Style="width: 100%;" Size="small"
+                                    Type=@(isTriggered ? "primary" : "default")
+                                    OnClick=@(_ => ViewModel.SetCommand(command))>
+                                @command.Name
+                            </Button>
+                        </GridCol>
+                    }
+
+                </GridRow>
+
+                <Divider Orientation="left">Buttons (@ViewModel.CommandsButton.Length)</Divider>
+                <GridRow Gutter="(8, 8)">
+
+                    @foreach (var command in ViewModel.CommandsButton)
+                    {
+                        var isTriggered = command.KeyExact.Equals(ViewModel.CommandReceived?.KeyExact);
+                        <GridCol Span="6" Md="4" Lg="3" Class="watcher-text-center">
+                            <Button Style="width: 100%;" Size="small"
+                                    Type=@(isTriggered ? "primary" : "default")
+                                    OnClick=@(_ => ViewModel.SetCommand(command))>
+                                @command.Name
+                            </Button>
+                        </GridCol>
+                    }
+
+                </GridRow>
+
+                <Divider Orientation="left">Unassigned (@ViewModel.CommandsUnbinded.Length)</Divider>
+                <GridRow Gutter="(8, 8)">
+
+                    @foreach (var command in ViewModel.CommandsUnbinded)
+                    {
+                        var isTriggered = command.KeyFuzzy.Equals(ViewModel.CommandReceived?.KeyFuzzy);
+                        if (ViewModel.CommandReceived?.Type != ControllerType.None) isTriggered = false;
+                        <GridCol Span="6" Md="4" Lg="3" Class="watcher-text-center">
+                            <Button Style="width: 100%;" Size="small"
+                                    Type=@(isTriggered ? "primary" : "default")
+                                    OnClick=@(_ => ViewModel.SetCommand(command))>
+                                @command.Name
+                            </Button>
+                        </GridCol>
+                    }
+
+                </GridRow>
             }
             else
             {
@@ -62,6 +113,77 @@
                     <Result Status="warning" Title="No MIDI Controller Available."/>
                 </div>
             }
+
+            <Modal Title="@ViewModel.CommandSelected?.Name"
+                   Visible="@ViewModel.IsSettingsVisible"
+                   Draggable="true" DragInViewport="false"
+                   OnOk="@ViewModel.SetCommandSave"
+                   OnCancel="@ViewModel.SetCommandCancel"
+                   ConfirmLoading="@ViewModel.IsSettingsLoading">
+
+                <Form Model="@ViewModel.CommandEditing"
+                      LabelColSpan="6"
+                      WrapperColSpan="18"
+                      Size="small"
+                      Loading="@ViewModel.IsSettingsLoading">
+
+                    <FormItem Style="margin: 4px;" Label="Device Name">
+                        <Input Disabled Value="@context.DeviceKey"/>
+                    </FormItem>
+                    <FormItem Style="margin: 4px;" Label="Command Name">
+                        <Input Disabled Value="@context.CommandKey"/>
+                    </FormItem>
+                    <FormItem Style="margin: 4px;" Label="Display Name">
+                        <Input @bind-Value="@context.Name"/>
+                    </FormItem>
+
+                    <FormItem Style="margin: 4px;" Label="Control Type">
+                        <RadioGroup @bind-Value="@context.Type" Style="display: flex;">
+                            @foreach (var type in Enum.GetValues<ControllerType>())
+                            {
+                                <Radio RadioButton Value="@type"
+                                       Style="flex-grow: 1; text-align: center;">
+                                    @type
+                                </Radio>
+                            }
+                        </RadioGroup>
+                    </FormItem>
+
+                    <FormItem Style="margin: 4px;" Label="Trigger Values">
+                        <InputGroup Compact>
+                            @if (context.Type == ControllerType.Button)
+                            {
+                                <Input Type="number" @bind-Value="@context.Value"/>
+                                <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
+                                <Input Type="number" @bind-Value="@context.ValueHigh" Disabled/>
+                            }
+                            else
+                            {
+                                <Input Type="number" @bind-Value="@context.Value"
+                                       min="@context.ValueMin" max="@context.ValueHigh"
+                                       Disabled="@(context.Type == ControllerType.None)"/>
+                                <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
+                                <Input Type="number" @bind-Value="@context.ValueHigh"
+                                       max="@context.ValueMax" min="@context.Value"
+                                       Disabled="@(context.Type == ControllerType.None)"/>
+                            }
+                        </InputGroup>
+                    </FormItem>
+
+                    <FormItem Style="margin: 4px;" Label="Axis Full Range">
+                        <InputGroup Compact>
+                            <Input Type="number" @bind-Value="@context.ValueMin"
+                                   max="@int.Min(context.ValueMax, context.Value)"
+                                   Disabled="@(context.Type != ControllerType.Axis)"/>
+                            <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
+                            <Input Type="number" @bind-Value="@context.ValueMax"
+                                   min="@int.Min(context.ValueMin, context.ValueHigh)"
+                                   Disabled="@(context.Type != ControllerType.Axis)"/>
+                        </InputGroup>
+                    </FormItem>
+
+                </Form>
+            </Modal>
         </Content>
     </Layout>
 </Layout>
@@ -76,12 +198,9 @@
 
     private string GetCurrentDeviceName()
     {
-        if (ViewModel.DeviceId < 0 || ViewModel.DeviceId >= ViewModel.DevicesAvailable.Length)
-        {
-            return "Unknown";
-        }
-
-        return ViewModel.DevicesAvailable[ViewModel.DeviceId].Name;
+        var device = ViewModel.DevicesAvailable
+            .FirstOrDefault(d => d.Id == ViewModel.DeviceId);
+        return device.Name ?? "Unknown";
     }
 
 }

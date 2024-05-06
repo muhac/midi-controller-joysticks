@@ -27,7 +27,7 @@
 
 <Layout Class="app-layout">
     <Menu Class="app-menu" Mode="MenuMode.Inline"
-          DefaultSelectedKeys="@(new[] { ViewModel.DeviceId.ToString() })">
+          SelectedKeys="@(new[] { ViewModel.DeviceId.ToString() })">
 
         @if (ViewModel.DevicesAvailable.Length == 0)
         {
@@ -81,7 +81,8 @@
                     @foreach (var (state, index) in ViewModel.DisplayState.ButtonStates.Select((x, i) => (x, i)))
                     {
                         <GridCol Span="3" Md="2" Lg="1" Class="watcher-text-center">
-                            <Tag Style="width: 100%; padding: 0" Color="@(state ? "blue-inverse" : "default")">
+                            <Tag Style="width: 100%; padding: 0; text-align: center;"
+                                 Color="@(state ? "blue-inverse" : "default")">
                                 @(index + 1)
                             </Tag>
                         </GridCol>
