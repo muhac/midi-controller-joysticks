@@ -53,8 +53,9 @@ public class JoyManager : IJoysticks
         return _joysticks.Length;
     }
 
-    public IJoystick GetJoystick(int id)
+    public IJoystick? GetJoystick(int id)
     {
+        if (id < 1 || id > _joysticks.Length) return null;
         return _joysticks[id - 1];
     }
 

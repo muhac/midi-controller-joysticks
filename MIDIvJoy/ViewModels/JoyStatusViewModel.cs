@@ -16,9 +16,11 @@ public class JoyStatusViewModel
     {
         _m = m;
         (_, VersionDll, VersionDrv) = m.GetVersions();
-        Enumerable.Range(1, m.GetJoystickCount())
-            .ToList()
-            .ForEach(id => m.GetJoystick(id).StatusChanged += OnStatusChanged);
+        Enumerable.Range(1, m.GetJoystickCount()).ToList().ForEach(i =>
+            {
+                var j = m.GetJoystick(i);
+                if (j != null) j.StatusChanged += OnStatusChanged;
+            });
     }
 
     private readonly IJoysticks _m;
@@ -45,7 +47,7 @@ public class JoyStatusViewModel
     {
         var totalCount = _m.GetJoystickCount();
         var status = Enumerable.Range(1, totalCount)
-            .Select(id => _m.GetJoystick(id).GetStatus())
+            .Select(id => _m.GetJoystick(id)?.GetStatus() ?? JoystickStatus.Unknown)
             .ToArray();
 
         var unknownCount = status.Count(s => s == JoystickStatus.Unknown);
@@ -64,7 +66,7 @@ public class JoyStatusViewModel
     public void ToggleActive(int id)
     {
         var joystick = _m.GetJoystick(id);
-        _ = joystick.GetStatus() switch
+        _ = joystick?.GetStatus() switch
         {
             JoystickStatus.Free => joystick.GetFeeder().Acquire(),
             JoystickStatus.Engaged => joystick.GetFeeder().Release(),

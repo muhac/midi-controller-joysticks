@@ -189,16 +189,74 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
             axesEnabled.Count(x => x), Instance.Hardware.ButtonNumber);
     }
 
-    public async Task<bool> Set(OneOf<JoystickAxis, JoystickButton> action, int value)
+    private readonly object _clickReleaseLock = new();
+    private Guid _clickReleaseId = Guid.NewGuid();
+
+    public async Task<bool> Set(OneOf<JoystickActionAxis, JoystickActionButton> action)
     {
-        await Task.Delay(0);
-
         action.Switch(
-            axis => Console.WriteLine(1),
-            button => Console.WriteLine(2)
+            SetAxis,
+            SetButton
         );
+        SetVJState();
 
+        if (!action.IsT1 || action.AsT1.Type != ActionTypeButton.Click) return true;
+
+        _ = Task.Run(async () =>
+        {
+            // Click action as simulation of knob - TODO: use axis +/-
+            // Implemented as toggle between press and release
+            // The final signal is release after a delay
+
+            var id = Guid.NewGuid();
+            lock (_clickReleaseLock) _clickReleaseId = id;
+            Console.WriteLine(id);
+            await Task.Delay(200);
+
+            bool released;
+            lock (_clickReleaseLock) released = _clickReleaseId != id;
+            if (released) return;
+
+            var release = new JoystickActionButton(action.AsT1!.Number)
+            {
+                Type = ActionTypeButton.Release
+            };
+
+            await Set(release);
+        });
         return true;
+    }
+
+    private void SetAxis(JoystickActionAxis action)
+    {
+        var axisName = "Axis" + action.Axis;
+        var stateType = Instance.State.GetType();
+        var axisField = stateType.GetField(axisName);
+        var axisValue = AxisPct2Val(action.Percent);
+
+        if (axisField is null) return;
+
+        var state = (object)Instance.State;
+        axisField.SetValue(state, axisValue);
+        Instance.State = (vJoy.JoystickState)state;
+    }
+
+    private void SetButton(JoystickActionButton action)
+    {
+        var bit = 1u << action.Number - 1;
+        switch (action.Type)
+        {
+            case ActionTypeButton.Press:
+                Instance.State.Buttons |= bit;
+                break;
+            case ActionTypeButton.Release:
+                Instance.State.Buttons &= ~bit;
+                break;
+            case ActionTypeButton.Click:
+            default:
+                Instance.State.Buttons ^= bit;
+                break;
+        }
     }
 
     public async Task<bool> Acquire()

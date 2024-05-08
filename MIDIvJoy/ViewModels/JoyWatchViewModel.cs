@@ -38,9 +38,11 @@ public class JoyWatcherViewModel
         _t = new Timer(Watch, 1, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
         Watch(true);
 
-        Enumerable.Range(1, _m.GetJoystickCount())
-            .ToList()
-            .ForEach(id => _m.GetJoystick(id).StatusChanged += OnStatusChanged);
+        Enumerable.Range(1, m.GetJoystickCount()).ToList().ForEach(i =>
+        {
+            var j = m.GetJoystick(i);
+            if (j != null) j.StatusChanged += OnStatusChanged;
+        });
     }
 
     private readonly IJoysticks _m;
@@ -66,12 +68,8 @@ public class JoyWatcherViewModel
 
     private void UpdateIds()
     {
-        var status = Enumerable.Range(1, _m.GetJoystickCount())
-            .Select(id => _m.GetJoystick(id).GetStatus())
-            .ToArray();
-
         DevicesAvailable = Enumerable.Range(1, _m.GetJoystickCount())
-            .Select(id => new JoyDevice { Id = id, Status = status[id - 1] })
+            .Select(id => new JoyDevice { Id = id, Status = _m.GetJoystick(id)?.GetStatus() ?? JoystickStatus.Unknown })
             .Where(device => device.Status != JoystickStatus.Unknown)
             .ToArray();
     }
@@ -96,6 +94,8 @@ public class JoyWatcherViewModel
     private JoyState FormatState()
     {
         var joystick = _m.GetJoystick(DeviceId);
+        if (joystick == null) return new JoyState { Ok = false };
+
         var hw = joystick.GetHardware();
         var state = joystick.GetState();
 

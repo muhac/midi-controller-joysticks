@@ -9,69 +9,66 @@ public struct MidiDevice
     public MidiIn? Handler { get; init; }
 }
 
-public class MidiEventArgs(Command command) : EventArgs
+public class MidiEventArgs(Command? command) : EventArgs
 {
-    public Command Command = command;
+    public readonly Command? Command = command;
 }
 
-public class CommandEventArgs(Command command) : EventArgs
+public class MidiEvent(string device, string command, int value, int valueMin, int valueMax)
 {
-    public Command Command = command;
-}
-
-public class Command(string device, string command, ControllerType type, int value, int valueMin, int valueMax)
-{
-    public string DeviceKey { get; init; } = device;
-    public string CommandKey { get; init; } = command;
-
-    public string Name { get; set; } = command;
-    public ControllerType Type { get; set; } = type;
-
+    public string Device { get; init; } = device;
+    public string Command { get; init; } = command;
     public int Value { get; set; } = value;
-    public int ValueHigh { get; set; } = value;
+    public int ValueRangeHigh { get; set; } = value;
     public int ValueMin { get; set; } = valueMin;
     public int ValueMax { get; set; } = valueMax;
+}
 
-    public bool Bind { get; set; }
+public class Command(MidiEvent e)
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = e.Command;
 
-    public CommandKeyExact KeyExact => new(this);
-    public CommandKeyFuzzy KeyFuzzy => new(this);
+    public MidiEvent Event { get; set; } = e;
+    public JoystickAction Action { get; set; } = new();
+
+    public CommandKey Key => new(this);
 
     public Command DeepCopy()
     {
-        var cmd = new Command(
-            DeviceKey,
-            CommandKey,
-            Type,
-            Value,
-            ValueMin,
-            ValueMax
+        var evt = new MidiEvent(
+            Event.Device,
+            Event.Command,
+            Event.Value,
+            Event.ValueMin,
+            Event.ValueMax
         )
         {
+            ValueRangeHigh = Event.ValueRangeHigh
+        };
+
+        var act = new JoystickAction
+        {
+            DeviceId = Action.DeviceId,
+            Type = Action.Type,
+            Axis = Action.Axis,
+            Button = Action.Button,
+            Value = Action.Value
+        };
+
+        var cmd = new Command(evt)
+        {
+            Id = Id,
             Name = Name,
-            ValueHigh = ValueHigh,
-            Bind = Bind
+            Action = act
         };
 
         return cmd;
     }
 }
 
-public struct CommandKeyFuzzy(Command command)
+public struct CommandKey(Command command)
 {
-    public string Device = command.DeviceKey;
-    public string Command = command.CommandKey;
-}
-
-public struct CommandKeyExact(Command command)
-{
-    public string Device = command.DeviceKey;
-    public string Command = command.CommandKey;
-
-    public string Value = command.Type switch
-    {
-        ControllerType.Axis => "Axis",
-        ControllerType.Button => "Btn" + command.Value.ToString(),
-        _ => string.Empty,
-    };
+    public string Device = command.Event.Device;
+    public string Event = command.Event.Command;
 }

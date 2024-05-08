@@ -1,5 +1,6 @@
 ﻿using NAudio.Midi;
 using MIDIvJoy.Models.DataModels;
+using MidiEvent = MIDIvJoy.Models.DataModels.MidiEvent;
 
 namespace MIDIvJoy.Models.MidiDevices;
 
@@ -77,47 +78,43 @@ public class MidiManager : IMidiDevices
     {
         return (_, e) =>
         {
-            var info = e.MidiEvent switch
+            Console.WriteLine(DateTime.Now + e.MidiEvent switch
             {
                 ControlChangeEvent evt => $"{evt.Channel} Control Change {evt.Controller} {evt.ControllerValue}",
                 NoteEvent evt => $"{evt.Channel} Note {evt.NoteName} {evt.NoteNumber} {evt.Velocity}",
                 PitchWheelChangeEvent evt => $"{evt.Channel} Pitch Wheel {evt.Pitch} / 16384",
                 _ => $"Device {key} MIDI Message {e.MidiEvent.GetType()} Event {e.MidiEvent}"
-            };
+            });
 
-            Console.WriteLine(info);
 
-            var command = e.MidiEvent switch
+            var midiEvent = e.MidiEvent switch
             {
-                ControlChangeEvent evt => new Command(
+                ControlChangeEvent evt => new Command(new MidiEvent(
                     key,
                     $"Ctrl {evt.Controller}",
-                    ControllerType.None,
                     evt.ControllerValue,
                     0, 127
-                ),
+                )),
 
-                NoteEvent evt => new Command(
+                NoteEvent evt => new Command(new MidiEvent(
                     key,
                     $"Note {evt.NoteName}",
-                    ControllerType.None,
                     evt.Velocity,
                     0, 127
-                ),
+                )),
 
-                PitchWheelChangeEvent evt => new Command(
+                PitchWheelChangeEvent evt => new Command(new MidiEvent(
                     key,
                     $"Pitch {evt.Channel}",
-                    ControllerType.None,
                     evt.Pitch,
                     0, 16384
-                ),
+                )),
 
                 _ => null,
             };
 
-            if (command == null) return;
-            EventReceived?.Invoke(this, new MidiEventArgs(command));
+            if (midiEvent == null) return;
+            EventReceived?.Invoke(this, new MidiEventArgs(midiEvent));
         };
     }
 

@@ -1,7 +1,9 @@
 ﻿@using MIDIvJoy.Models.DataModels
+@using MIDIvJoy.Models.Joysticks
 @using MIDIvJoy.ViewModels
 
 @inject MidiConfigViewModel ViewModel
+@inject IJoysticks m
 
 <style>
     .config-container {
@@ -47,7 +49,7 @@
     </Menu>
 
     <Layout Class="app-content">
-        <Content Class="app-content-item config-container">
+        <Content Class="app-content-item config-container" Style="display: flex; flex-direction: column;">
             <Breadcrumb Style="margin: 0 0 12px;">
                 <BreadcrumbItem>MIDI Device</BreadcrumbItem>
                 <BreadcrumbItem>@GetCurrentDeviceName()</BreadcrumbItem>
@@ -55,16 +57,16 @@
 
             @if (ViewModel.DevicesAvailable.Length > 0)
             {
-                <Divider Orientation="left">Axis (@ViewModel.CommandsAxis.Length)</Divider>
+                <Divider Orientation="left">Axes (@ViewModel.CommandsAxis.Length)</Divider>
                 <GridRow Gutter="(8, 8)">
 
                     @foreach (var command in ViewModel.CommandsAxis)
                     {
-                        var isTriggered = command.KeyExact.Equals(ViewModel.CommandReceived?.KeyExact);
+                        var isTriggered = command.Id == ViewModel.CommandReceived?.Id;
                         <GridCol Span="6" Md="4" Lg="3" Class="watcher-text-center">
                             <Button Style="width: 100%;" Size="small"
                                     Type=@(isTriggered ? "primary" : "default")
-                                    OnClick=@(_ => ViewModel.SetCommand(command))>
+                                    OnClick=@(_ => ViewModel.EditBinding(command))>
                                 @command.Name
                             </Button>
                         </GridCol>
@@ -77,11 +79,11 @@
 
                     @foreach (var command in ViewModel.CommandsButton)
                     {
-                        var isTriggered = command.KeyExact.Equals(ViewModel.CommandReceived?.KeyExact);
+                        var isTriggered = command.Id == ViewModel.CommandReceived?.Id;
                         <GridCol Span="6" Md="4" Lg="3" Class="watcher-text-center">
                             <Button Style="width: 100%;" Size="small"
                                     Type=@(isTriggered ? "primary" : "default")
-                                    OnClick=@(_ => ViewModel.SetCommand(command))>
+                                    OnClick=@(_ => ViewModel.EditBinding(command))>
                                 @command.Name
                             </Button>
                         </GridCol>
@@ -94,18 +96,25 @@
 
                     @foreach (var command in ViewModel.CommandsUnbinded)
                     {
-                        var isTriggered = command.KeyFuzzy.Equals(ViewModel.CommandReceived?.KeyFuzzy);
-                        if (ViewModel.CommandReceived?.Type != ControllerType.None) isTriggered = false;
+                        var isTriggered = command.Key.Equals(ViewModel.CommandReceived?.Key);
+                        if (ViewModel.CommandReceived?.Action.Type != ActionType.None) isTriggered = false;
                         <GridCol Span="6" Md="4" Lg="3" Class="watcher-text-center">
                             <Button Style="width: 100%;" Size="small"
                                     Type=@(isTriggered ? "primary" : "default")
-                                    OnClick=@(_ => ViewModel.SetCommand(command))>
+                                    OnClick=@(_ => ViewModel.EditBinding(command))>
                                 @command.Name
                             </Button>
                         </GridCol>
                     }
 
                 </GridRow>
+
+                <div style="margin-top: auto; padding-top: 10px;">
+                    Click on a MIDI event to bind it to a Joystick action.
+                    <br/>
+                    All events not binded are listed under the "Unassigned" section.
+                    The values are updated to the last received ones.
+                </div>
             }
             else
             {
@@ -117,72 +126,119 @@
             <Modal Title="@ViewModel.CommandSelected?.Name"
                    Visible="@ViewModel.IsSettingsVisible"
                    Draggable="true" DragInViewport="false"
-                   OnOk="@ViewModel.SetCommandSave"
-                   OnCancel="@ViewModel.SetCommandCancel"
+                   OnOk="@ViewModel.EditBindingSave"
+                   OnCancel="@ViewModel.EditBindingCancel"
                    ConfirmLoading="@ViewModel.IsSettingsLoading">
 
-                <Form Model="@ViewModel.CommandEditing"
-                      LabelColSpan="6"
-                      WrapperColSpan="18"
-                      Size="small"
-                      Loading="@ViewModel.IsSettingsLoading">
+                @if (ViewModel.CommandEditing != null)
+                {
+                    <Form Model="@ViewModel.CommandEditing"
+                          LabelColSpan="6"
+                          WrapperColSpan="18"
+                          Size="small"
+                          Loading="@ViewModel.IsSettingsLoading">
 
-                    <FormItem Style="margin: 4px;" Label="Device Name">
-                        <Input Disabled Value="@context.DeviceKey"/>
-                    </FormItem>
-                    <FormItem Style="margin: 4px;" Label="Command Name">
-                        <Input Disabled Value="@context.CommandKey"/>
-                    </FormItem>
-                    <FormItem Style="margin: 4px;" Label="Display Name">
-                        <Input @bind-Value="@context.Name"/>
-                    </FormItem>
+                        <FormItem Style="margin: 4px;" Label="Name">
+                            <Input @bind-Value="@context.Name"/>
+                        </FormItem>
+                        <FormItem Style="margin: 4px;" Label="Command ID">
+                            <Input Disabled Value="@context.Id"/>
+                        </FormItem>
 
-                    <FormItem Style="margin: 4px;" Label="Control Type">
-                        <RadioGroup @bind-Value="@context.Type" Style="display: flex;">
-                            @foreach (var type in Enum.GetValues<ControllerType>())
-                            {
-                                <Radio RadioButton Value="@type"
-                                       Style="flex-grow: 1; text-align: center;">
-                                    @type
-                                </Radio>
-                            }
-                        </RadioGroup>
-                    </FormItem>
+                        <FormItem Style="margin: 4px;" Label="MIDI Device">
+                            <Input Disabled Value="@context.Event.Device"/>
+                        </FormItem>
+                        <FormItem Style="margin: 4px;" Label="MIDI Event">
+                            <Input Disabled Value="@context.Event.Command"/>
+                        </FormItem>
 
-                    <FormItem Style="margin: 4px;" Label="Trigger Values">
-                        <InputGroup Compact>
-                            @if (context.Type == ControllerType.Button)
-                            {
-                                <Input Type="number" @bind-Value="@context.Value"/>
+                        <FormItem Style="margin: 4px;" Label="Trigger Values">
+                            <InputGroup Compact>
+                                @if (context.Action.Type == ActionType.Button)
+                                {
+                                    <Input Type="number" @bind-Value="@context.Event.Value"/>
+                                    <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
+                                    <Input Type="number" @bind-Value="@context.Event.ValueRangeHigh" Disabled/>
+                                }
+                                else
+                                {
+                                    <Input Type="number" @bind-Value="@context.Event.Value"
+                                           min="@context.Event.ValueMin" max="@context.Event.ValueRangeHigh"
+                                           Disabled="@(context.Action.Type == ActionType.None)"/>
+                                    <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
+                                    <Input Type="number" @bind-Value="@context.Event.ValueRangeHigh"
+                                           max="@context.Event.ValueMax" min="@context.Event.Value"
+                                           Disabled="@(context.Action.Type == ActionType.None)"/>
+                                }
+                            </InputGroup>
+                        </FormItem>
+                        
+                        <FormItem Style="margin: 4px;" Label="Action Type">
+                            <RadioGroup @bind-Value="@context.Action.Type" Style="display: flex;">
+                                @foreach (var type in Enum.GetValues<ActionType>())
+                                {
+                                    <Radio RadioButton Value="@type"
+                                           Style="flex-grow: 1; text-align: center;">
+                                        @type
+                                    </Radio>
+                                }
+                            </RadioGroup>
+                        </FormItem>
+
+                        <FormItem Style="margin: 4px;" Label="Joystick Device">
+                            <RadioGroup @bind-Value="@context.Action.DeviceId" Style="display: flex;">
+                                <AntDesign.InputNumber @bind-Value="@context.Action.DeviceId"
+                                                       Min="1" Max="16"
+                                                       Style="width: 60px; margin-right: 8px"/>
+
+                                @foreach (var id in Enumerable.Range(1, 5))
+                                {
+                                    <Radio RadioButton Value="@id"
+                                           Style="flex-grow: 1; text-align: center;">
+                                        @id
+                                    </Radio>
+                                }
+                            </RadioGroup>
+                        </FormItem>
+
+                        <FormItem Style="margin: 4px;" Label="Axis and Range">
+                            <InputGroup Compact>
+                                <Select DataSource="@(Enum.GetValues<JoystickAxis>())"
+                                        @bind-Value="@context.Action.Axis.Axis"
+                                        Style="width: 450px; margin-right: 8px"
+                                        Disabled="@(context.Action.Type != ActionType.Axis)"
+                                        EnableSearch>
+                                </Select>
+
+                                <Input Type="number" @bind-Value="@context.Event.ValueMin"
+                                       max="@int.Min(context.Event.ValueMax, context.Event.Value)"
+                                       Disabled="@(context.Action.Type == ActionType.None)"/>
                                 <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
-                                <Input Type="number" @bind-Value="@context.ValueHigh" Disabled/>
-                            }
-                            else
-                            {
-                                <Input Type="number" @bind-Value="@context.Value"
-                                       min="@context.ValueMin" max="@context.ValueHigh"
-                                       Disabled="@(context.Type == ControllerType.None)"/>
-                                <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
-                                <Input Type="number" @bind-Value="@context.ValueHigh"
-                                       max="@context.ValueMax" min="@context.Value"
-                                       Disabled="@(context.Type == ControllerType.None)"/>
-                            }
-                        </InputGroup>
-                    </FormItem>
+                                <Input Type="number" @bind-Value="@context.Event.ValueMax"
+                                       min="@int.Min(context.Event.ValueMin, context.Event.ValueRangeHigh)"
+                                       Disabled="@(context.Action.Type == ActionType.None)"/>
+                            </InputGroup>
+                        </FormItem>
 
-                    <FormItem Style="margin: 4px;" Label="Axis Full Range">
-                        <InputGroup Compact>
-                            <Input Type="number" @bind-Value="@context.ValueMin"
-                                   max="@int.Min(context.ValueMax, context.Value)"
-                                   Disabled="@(context.Type != ControllerType.Axis)"/>
-                            <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
-                            <Input Type="number" @bind-Value="@context.ValueMax"
-                                   min="@int.Min(context.ValueMin, context.ValueHigh)"
-                                   Disabled="@(context.Type != ControllerType.Axis)"/>
-                        </InputGroup>
-                    </FormItem>
+                        <FormItem Style="margin: 4px;" Label="Button Number">
+                            <RadioGroup @bind-Value="@context.Action.Button.Type" Style="display: flex;">
+                                <AntDesign.InputNumber @bind-Value="@context.Action.Button.Number" Min="1"
+                                                       Style="width: 60px; margin-right: 8px"
+                                                       Disabled="@(context.Action.Type != ActionType.Button)"/>
 
-                </Form>
+                                @foreach (var type in Enum.GetValues<ActionTypeButton>())
+                                {
+                                    <Radio RadioButton Value="@type"
+                                           Style="flex-grow: 1; text-align: center;"
+                                           Disabled="@(context.Action.Type != ActionType.Button)">
+                                        @type
+                                    </Radio>
+                                }
+                            </RadioGroup>
+                        </FormItem>
+
+                    </Form>
+                }
             </Modal>
         </Content>
     </Layout>

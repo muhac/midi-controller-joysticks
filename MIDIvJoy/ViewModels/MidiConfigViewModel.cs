@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Web;
 using MIDIvJoy.Models.DataModels;
+using MIDIvJoy.Models.Joysticks;
 using MIDIvJoy.Models.MidiDevices;
 
 namespace MIDIvJoy.ViewModels;
@@ -12,10 +13,11 @@ public struct MidiDeviceInfo
 
 public class MidiConfigViewModel
 {
-    public MidiConfigViewModel(IMidiDevices m, IMidiController c)
+    public MidiConfigViewModel(IMidiDevices m, IMidiController c, IJoysticks j)
     {
         _m = m;
         _c = c;
+        _j = j;
 
         _m.EventReceived += OnCommandsReceived;
         _c.CommandsChanged += OnCommandsChanged;
@@ -25,6 +27,7 @@ public class MidiConfigViewModel
 
     private readonly IMidiDevices _m;
     private readonly IMidiController _c;
+    private readonly IJoysticks _j;
     private Timer _t;
 
     public MidiDeviceInfo[] DevicesAvailable { get; private set; } = [];
@@ -33,20 +36,20 @@ public class MidiConfigViewModel
     private Command[] _commands = [];
 
     public Command[] CommandsAxis => _commands
-        .Where(cmd => cmd.Type == ControllerType.Axis)
-        .Where(cmd => cmd.DeviceKey == DeviceId)
+        .Where(cmd => cmd.Action.Type == ActionType.Axis)
+        .Where(cmd => cmd.Event.Device == DeviceId)
         .OrderBy(cmd => cmd.Name)
         .ToArray();
 
     public Command[] CommandsButton => _commands
-        .Where(cmd => cmd.Type == ControllerType.Button)
-        .Where(cmd => cmd.DeviceKey == DeviceId)
+        .Where(cmd => cmd.Action.Type == ActionType.Button)
+        .Where(cmd => cmd.Event.Device == DeviceId)
         .OrderBy(cmd => cmd.Name)
         .ToArray();
 
     public Command[] CommandsUnbinded => _commands
-        .Where(cmd => cmd.Type == ControllerType.None)
-        .Where(cmd => cmd.DeviceKey == DeviceId)
+        .Where(cmd => cmd.Action.Type == ActionType.None)
+        .Where(cmd => cmd.Event.Device == DeviceId)
         .OrderBy(cmd => cmd.Name)
         .ToArray();
 
@@ -91,7 +94,7 @@ public class MidiConfigViewModel
         _commands = _c.ListCommands();
     }
 
-    private void OnCommandsChanged(object? sender, CommandEventArgs e)
+    private void OnCommandsChanged(object? sender, MidiEventArgs e)
     {
         UpdateCommands();
         StateHasChanged();
@@ -99,6 +102,7 @@ public class MidiConfigViewModel
 
     private void OnCommandsReceived(object? sender, MidiEventArgs e)
     {
+        if (e.Command is null) return;
         var action = _c.GetAction(e.Command);
 
         CommandReceived = action ?? e.Command;
@@ -110,37 +114,51 @@ public class MidiConfigViewModel
             return;
         }
 
-        _ = _c.Trigger(action).Result;
+        var joystick = _j.GetJoystick(action.Action.DeviceId);
+        if (joystick is null) return;
+
+        var result = action.Action.Type switch
+        {
+            ActionType.Axis => joystick.GetFeeder().Set(action.Action.Axis).Result,
+            ActionType.Button => joystick.GetFeeder().Set(action.Action.Button).Result,
+            _ => false,
+        };
     }
 
-
-    public void SetCommand(Command cmd)
+    public void EditBinding(Command cmd)
     {
         CommandSelected = cmd;
         CommandEditing = cmd.DeepCopy();
+        if (CommandEditing.Id == string.Empty)
+        {
+            // edit a new command
+            CommandEditing.Id = Guid.NewGuid().ToString().ToUpper();
+        }
+
         IsSettingsVisible = true;
     }
 
-    public async Task SetCommandSave(MouseEventArgs e)
+    public async Task EditBindingSave(MouseEventArgs e)
     {
         IsSettingsLoading = true;
         StateHasChanged();
 
         if (
             CommandEditing is not null && CommandSelected is not null &&
-            CommandEditing.KeyFuzzy.Equals(CommandSelected.KeyFuzzy)
+            CommandEditing.Key.Equals(CommandSelected.Key)
         )
         {
             _c.DelCommand(CommandSelected);
             _c.AddCommand(CommandEditing);
         }
 
+        await Task.Delay(1000);
+
         IsSettingsVisible = false;
         IsSettingsLoading = false;
-        StateHasChanged();
     }
 
-    public void SetCommandCancel(MouseEventArgs e)
+    public void EditBindingCancel(MouseEventArgs e)
     {
         IsSettingsVisible = false;
     }

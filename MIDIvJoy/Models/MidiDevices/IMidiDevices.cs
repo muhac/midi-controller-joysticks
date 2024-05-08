@@ -17,8 +17,7 @@ public interface IMidiController
 
     public bool AddCommand(Command command);
     public bool DelCommand(Command command);
-    event EventHandler<CommandEventArgs> CommandsChanged;
+    event EventHandler<MidiEventArgs> CommandsChanged;
 
     public Command? GetAction(Command command);
-    public Task<bool> Trigger(Command command);
 }

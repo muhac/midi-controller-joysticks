@@ -15,11 +15,27 @@ public class JoystickStatusEventArgs(JoystickStatus status) : EventArgs
     public JoystickStatus Status { get; } = status;
 }
 
-public enum ControllerType
+public class JoystickAction
+{
+    public int DeviceId = 1;
+    public ActionType Type = ActionType.None;
+    public JoystickActionAxis Axis = new(JoystickAxis.X);
+    public JoystickActionButton Button = new(1);
+    public int Value = 0;
+}
+
+public enum ActionType
 {
     None,
     Axis,
     Button,
+}
+
+public enum ActionTypeButton
+{
+    Press,
+    Release,
+    Click,
 }
 
 public enum JoystickAxis : uint
@@ -46,19 +62,16 @@ public enum JoystickAxis : uint
     Steering = HID_USAGES.HID_USAGE_STEERING,
 }
 
-public struct JoystickButton(int number)
+public class JoystickActionAxis(JoystickAxis axis)
 {
-    private readonly int _number = number;
+    public JoystickAxis Axis { get; set; } = axis;
+    public double Percent { get; set; } = 0;
+}
 
-    public static implicit operator int(JoystickButton button)
-    {
-        return button._number;
-    }
-
-    public static implicit operator JoystickButton(int number)
-    {
-        return new JoystickButton(number);
-    }
+public class JoystickActionButton(int number)
+{
+    public int Number { get; set; } = number;
+    public ActionTypeButton Type { get; set; } = ActionTypeButton.Press;
 }
 
 public class JoystickHardware

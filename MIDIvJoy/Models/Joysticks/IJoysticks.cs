@@ -6,7 +6,7 @@ namespace MIDIvJoy.Models.Joysticks;
 public interface IJoysticks
 {
     public int GetJoystickCount();
-    public IJoystick GetJoystick(int id);
+    public IJoystick? GetJoystick(int id);
     public (bool isMatch, uint verDll, uint verDrv) GetVersions();
 }
 
@@ -26,5 +26,5 @@ public interface IJoystickFeeder
     public Task<bool> Acquire();
     public Task<bool> Release();
 
-    public Task<bool> Set(OneOf<JoystickAxis, JoystickButton> action, int value);
+    public Task<bool> Set(OneOf<JoystickActionAxis, JoystickActionButton> action);
 }
