@@ -1,0 +1,137 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+# This workflow will build, test, sign and package a WPF or Windows Forms desktop application
+# built on .NET Core.
+# To learn how to migrate your existing application to .NET Core,
+# refer to https://docs.microsoft.com/en-us/dotnet/desktop-wpf/migration/convert-project-from-net-framework
+#
+# To configure this workflow:
+#
+# 1. Configure environment variables
+# GitHub sets default environment variables for every workflow run.
+# Replace the variables relative to your project in the "env" section below.
+#
+# 2. Signing
+# Generate a signing certificate in the Windows Application
+# Packaging Project or add an existing signing certificate to the project.
+# Next, use PowerShell to encode the .pfx file using Base64 encoding
+# by running the following Powershell script to generate the output string:
+#
+# $pfx_cert = Get-Content '.\SigningCertificate.pfx' -Encoding Byte
+# [System.Convert]::ToBase64String($pfx_cert) | Out-File 'SigningCertificate_Encoded.txt'
+#
+# Open the output file, SigningCertificate_Encoded.txt, and copy the
+# string inside. Then, add the string to the repo as a GitHub secret
+# and name it "Base64_Encoded_Pfx."
+# For more information on how to configure your signing certificate for
+# this workflow, refer to https://github.com/microsoft/github-actions-for-desktop-apps#signing
+#
+# Finally, add the signing certificate password to the repo as a secret and name it "Pfx_Key".
+# See "Build the Windows Application Packaging project" below to see how the secret is used.
+#
+# For more information on GitHub Actions, refer to https://github.com/features/actions
+# For a complete CI/CD sample to get started with GitHub Action workflows for Desktop Applications,
+# refer to https://github.com/microsoft/github-actions-for-desktop-apps
+
+name: .NET Core Desktop
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: MIDIvJoy
+
+    env:
+      Solution_Name: MIDIvJoy.sln
+
+    steps:
+    # Fetch dependencies
+    - name: Download vJoy SDK
+      uses: actions/checkout@v4
+      with:
+        repository: 'njz3/vJoy'
+        ref: 'v2.2.1.1'
+
+    - name: List SDK
+      working-directory: SDK/c#
+      run: |
+        dir
+        dir x64
+
+    - name: Save SDK
+      working-directory: SDK/c#
+      run: |
+        echo d | xcopy x64 $env:TEMP\SDKx64 /s /e /h
+        dir $env:TEMP
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Load SDK
+      run: |
+        echo d | xcopy $env:TEMP\SDKx64 lib\x64 /s /e /h
+        dir lib
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v2
+
+    # Restore the application to populate the obj folder with RuntimeIdentifiers
+    - name: Restore the application
+      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
+      env:
+        Configuration: ${{ matrix.configuration }}
+
+    - name: Execute unit tests
+      run: dotnet test
+
+    - name: Build the application
+      run: dotnet build --configuration ${{ matrix.configuration }}
+
+    - name: Publish the application
+      run: dotnet publish --configuration ${{ matrix.configuration }} -r win-x64
+
+    - name: List outputs
+      run: |
+        dir bin
+        dir bin\${{ matrix.configuration }}\net8.0-windows
+        dir bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MIDIvJoy Dev ${{ matrix.configuration }}
+        path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows
+        retention-days: 7
+        compression-level: 9
+
+    - name: Upload publish artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MIDIvJoy App ${{ matrix.configuration }}
+        path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
+        retention-days: 90
+        compression-level: 9
