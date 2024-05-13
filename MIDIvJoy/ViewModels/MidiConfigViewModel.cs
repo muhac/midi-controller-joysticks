@@ -152,7 +152,7 @@ public class MidiConfigViewModel
             _c.AddCommand(CommandEditing);
         }
 
-        await Task.Delay(1000);
+        await _c.SaveCommands();
 
         IsSettingsVisible = false;
         IsSettingsLoading = false;

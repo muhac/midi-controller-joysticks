@@ -21,7 +21,6 @@ public class JoystickAction
     public ActionType Type = ActionType.None;
     public JoystickActionAxis Axis = new(JoystickAxis.X);
     public JoystickActionButton Button = new(1);
-    public int Value = 0;
 }
 
 public enum ActionType
@@ -31,8 +30,16 @@ public enum ActionType
     Button,
 }
 
+public enum ActionTypeAxis
+{
+    Position,
+    Increment,
+    Decrement,
+}
+
 public enum ActionTypeButton
 {
+    Auto,
     Press,
     Release,
     Click,
@@ -65,13 +72,15 @@ public enum JoystickAxis : uint
 public class JoystickActionAxis(JoystickAxis axis)
 {
     public JoystickAxis Axis { get; set; } = axis;
+    public ActionTypeAxis Type { get; set; } = ActionTypeAxis.Position;
     public double Percent { get; set; } = 0;
 }
 
 public class JoystickActionButton(int number)
 {
     public int Number { get; set; } = number;
-    public ActionTypeButton Type { get; set; } = ActionTypeButton.Press;
+    public ActionTypeButton Type { get; set; } = ActionTypeButton.Auto;
+    public bool On { get; set; } = false;
 }
 
 public class JoystickHardware

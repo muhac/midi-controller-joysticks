@@ -53,7 +53,6 @@ public class Command(MidiEvent e)
             Type = Action.Type,
             Axis = Action.Axis,
             Button = Action.Button,
-            Value = Action.Value
         };
 
         var cmd = new Command(evt)
@@ -65,10 +64,72 @@ public class Command(MidiEvent e)
 
         return cmd;
     }
+
+    public CommandSaved ToSaved()
+    {
+        return new CommandSaved(this);
+    }
+
+    public static Command FromSaved(CommandSaved c)
+    {
+        var evt = new MidiEvent(
+            c.Midi,
+            c.Event,
+            c.TriggerLow,
+            c.ValueMin,
+            c.ValueMax
+        )
+        {
+            ValueRangeHigh = c.TriggerHigh
+        };
+
+        var act = new JoystickAction
+        {
+            DeviceId = c.Joystick,
+            Type = c.Action,
+            Axis = new JoystickActionAxis(c.Axis)
+            {
+                Type = c.AxisType
+            },
+            Button = new JoystickActionButton(c.Button)
+            {
+                Type = c.ButtonType
+            }
+        };
+
+        var cmd = new Command(evt)
+        {
+            Id = c.Id,
+            Name = c.Name,
+            Action = act
+        };
+
+        return cmd;
+    }
 }
 
 public struct CommandKey(Command command)
 {
     public string Device = command.Event.Device;
     public string Event = command.Event.Command;
+}
+
+public struct CommandSaved(Command c)
+{
+    public string Id { get; set; } = c.Id;
+    public string Name { get; set; } = c.Name;
+
+    public string Midi { get; set; } = c.Event.Device;
+    public string Event { get; set; } = c.Event.Command;
+    public int TriggerLow { get; set; } = c.Event.Value;
+    public int TriggerHigh { get; set; } = c.Event.ValueRangeHigh;
+    public int ValueMin { get; set; } = c.Event.ValueMin;
+    public int ValueMax { get; set; } = c.Event.ValueMax;
+
+    public int Joystick { get; set; } = c.Action.DeviceId;
+    public ActionType Action { get; set; } = c.Action.Type;
+    public JoystickAxis Axis { get; set; } = c.Action.Axis.Axis;
+    public ActionTypeAxis AxisType { get; set; } = c.Action.Axis.Type;
+    public int Button { get; set; } = c.Action.Button.Number;
+    public ActionTypeButton ButtonType { get; set; } = c.Action.Button.Type;
 }

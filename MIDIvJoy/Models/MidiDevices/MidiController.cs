@@ -1,10 +1,14 @@
 ﻿using System.Collections.Concurrent;
+using System.IO;
+using Newtonsoft.Json;
 using MIDIvJoy.Models.DataModels;
 
 namespace MIDIvJoy.Models.MidiDevices;
 
 public class MidiController : IMidiController
 {
+    private const string CommandsSavedFile = "commands.json";
+
     // for binded commands, only exact matches trigger the command
     private readonly ConcurrentDictionary<CommandKey, ConcurrentBag<Command>> _commandsSaved = new();
 
@@ -20,20 +24,28 @@ public class MidiController : IMidiController
 
     public async Task<bool> LoadCommands()
     {
-        Command[] commands = [];
+        var json = await File.ReadAllTextAsync(CommandsSavedFile);
+        var commands = JsonConvert.DeserializeObject<CommandSaved[]>(json) ?? [];
+        Console.WriteLine($"Commands Loaded from File: {commands.Length}");
 
-        foreach (var command in commands)
+        _commandsSaved.Clear();
+        foreach (var command in commands.Select(Command.FromSaved))
         {
             if (command.Id != string.Empty) AddCommand(command);
         }
 
-        await Task.Delay(1000);
         CommandsChanged?.Invoke(this, new MidiEventArgs(null));
         return true;
     }
 
     public async Task<bool> SaveCommands()
     {
+        var commands = ListCommands()
+            .Where(c => c.Id != string.Empty)
+            .Where(c => c.Action.Type != ActionType.None)
+            .Select(c => c.ToSaved());
+        var json = JsonConvert.SerializeObject(commands);
+        await File.WriteAllTextAsync(CommandsSavedFile, json);
         return await LoadCommands();
     }
 
@@ -89,20 +101,30 @@ public class MidiController : IMidiController
         var has = _commandsSaved.TryGetValue(query.Key, out var actions);
         if (!has || actions == null || actions.IsEmpty) return null;
 
-        // search for a button press action
-        var actionButton = actions
-            .Where(a => a.Action.Type == ActionType.Button)
-            .FirstOrDefault(a => a.Event.Value == query.Event.Value);
-        if (actionButton is not null) return actionButton;
-
         // search for an axis action
         var actionAxis = actions
             .Where(a => a.Action.Type == ActionType.Axis)
             .FirstOrDefault(a => a.Event.Value <= query.Event.Value && query.Event.Value <= a.Event.ValueRangeHigh);
-        if (actionAxis is null) return null;
+        if (actionAxis is not null)
+        {
+            double value = query.Event.Value - actionAxis.Event.ValueMin;
+            double range = actionAxis.Event.ValueMax - actionAxis.Event.ValueMin;
+            actionAxis.Action.Axis.Percent = double.Max(0, double.Min(100, value / range));
+            return actionAxis;
+        }
 
-        double range = actionAxis.Event.ValueMax - actionAxis.Event.ValueMin;
-        actionAxis.Action.Axis.Percent = (query.Event.Value - actionAxis.Event.ValueMin) / range;
-        return actionAxis;
+        // search for a button press action
+        var actionButton = actions
+            .Where(a => a.Action.Type == ActionType.Button)
+            .FirstOrDefault(a => a.Event.Value <= query.Event.Value && query.Event.Value <= a.Event.ValueRangeHigh);
+        if (actionButton is null) return null;
+
+        actionButton.Action.Button.On = actionButton.Action.Button.Type == ActionTypeButton.Press;
+        if (actionButton.Action.Button.Type == ActionTypeButton.Auto)
+        {
+            actionButton.Action.Button.On = query.Event.Value > actionButton.Event.ValueMin;
+        }
+
+        return actionButton;
     }
 }

@@ -63,7 +63,7 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
 
     public JoystickState GetState()
     {
-        GetVJState();
+        GetJoyState();
         return new JoystickState
         {
             Ok = Instance.Ok,
@@ -98,17 +98,17 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
         return this;
     }
 
-    private void GetVJState()
+    private void GetJoyState()
     {
         lock (_driverLock) _vj.GetPosition(_id, ref Instance.State);
     }
 
-    private void SetVJState()
+    private bool SetJoyState()
     {
-        lock (_driverLock) _vj.UpdateVJD(_id, ref Instance.State);
+        lock (_driverLock) return _vj.UpdateVJD(_id, ref Instance.State);
     }
 
-    private void ResetVJState()
+    private void ResetJoyState()
     {
         var mid = AxisPct2Val(.5);
 
@@ -138,8 +138,7 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
             Buttons = 0b0,
         };
 
-
-        SetVJState();
+        SetJoyState();
     }
 
     private void InitState()
@@ -189,42 +188,56 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
             axesEnabled.Count(x => x), Instance.Hardware.ButtonNumber);
     }
 
+    // Lock the click-release action to prevent multiple simultaneous clicks
     private readonly object _clickReleaseLock = new();
-    private Guid _clickReleaseId = Guid.NewGuid();
+    private Guid? _clickReleaseId;
+    private const int ClickReleaseIntervals = 50;
 
     public async Task<bool> Set(OneOf<JoystickActionAxis, JoystickActionButton> action)
     {
-        action.Switch(
-            SetAxis,
-            SetButton
-        );
-        SetVJState();
-
-        if (!action.IsT1 || action.AsT1.Type != ActionTypeButton.Click) return true;
-
-        _ = Task.Run(async () =>
+        // Special case for click-release
+        if (action.IsT1 && action.AsT1.Type == ActionTypeButton.Click)
         {
-            // Click action as simulation of knob - TODO: use axis +/-
-            // Implemented as toggle between press and release
-            // The final signal is release after a delay
-
             var id = Guid.NewGuid();
-            lock (_clickReleaseLock) _clickReleaseId = id;
-            Console.WriteLine(id);
-            await Task.Delay(200);
+            lock (_clickReleaseLock)
+            {
+                if (_clickReleaseId is not null) return false;
+                _clickReleaseId = id;
+            }
 
-            bool released;
-            lock (_clickReleaseLock) released = _clickReleaseId != id;
-            if (released) return;
-
+            var press = new JoystickActionButton(action.AsT1!.Number)
+            {
+                Type = ActionTypeButton.Press
+            };
             var release = new JoystickActionButton(action.AsT1!.Number)
             {
                 Type = ActionTypeButton.Release
             };
 
-            await Set(release);
-        });
-        return true;
+            var ok = await Set(press);
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(ClickReleaseIntervals); // pressed
+
+                // the return value sometimes is not reliable
+                // intentional double release in case the first one was missed
+                await Set(release);
+                await Set(release);
+
+                await Task.Delay(ClickReleaseIntervals); // released
+                lock (_clickReleaseLock) _clickReleaseId = null;
+            });
+
+            return ok;
+        }
+
+        action.Switch(
+            SetAxis,
+            SetButton
+        );
+
+        await Task.Delay(0);
+        return SetJoyState();
     }
 
     private void SetAxis(JoystickActionAxis action)
@@ -232,9 +245,22 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
         var axisName = "Axis" + action.Axis;
         var stateType = Instance.State.GetType();
         var axisField = stateType.GetField(axisName);
-        var axisValue = AxisPct2Val(action.Percent);
-
         if (axisField is null) return;
+
+        var axisValueCurrent = (int)axisField.GetValue(Instance.State)!;
+        var axisValue = action.Type switch
+        {
+            // TODO: MSFS does not identify small increments
+            ActionTypeAxis.Increment => axisValueCurrent + 1,
+            ActionTypeAxis.Decrement => axisValueCurrent - 1,
+            _ => AxisPct2Val(action.Percent)
+        };
+
+        if (axisValue < Instance.Hardware.AxisMin ||
+            axisValue > Instance.Hardware.AxisMax)
+        {
+            axisValue = AxisPct2Val(.5); // reset to mid
+        }
 
         var state = (object)Instance.State;
         axisField.SetValue(state, axisValue);
@@ -244,18 +270,13 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
     private void SetButton(JoystickActionButton action)
     {
         var bit = 1u << action.Number - 1;
-        switch (action.Type)
+        if (action.On || action.Type == ActionTypeButton.Press)
         {
-            case ActionTypeButton.Press:
-                Instance.State.Buttons |= bit;
-                break;
-            case ActionTypeButton.Release:
-                Instance.State.Buttons &= ~bit;
-                break;
-            case ActionTypeButton.Click:
-            default:
-                Instance.State.Buttons ^= bit;
-                break;
+            Instance.State.Buttons |= bit;
+        }
+        else
+        {
+            Instance.State.Buttons &= ~bit;
         }
     }
 
@@ -269,7 +290,7 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
 
         Instance.Ok = acquired;
         InitState();
-        ResetVJState();
+        ResetJoyState();
         UpdateStatus();
 
         Console.WriteLine($"Acquired vJoy device {_id}. ({acquired})");

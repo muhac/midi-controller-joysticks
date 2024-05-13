@@ -78,6 +78,7 @@ public class MidiManager : IMidiDevices
     {
         return (_, e) =>
         {
+            /*
             Console.WriteLine(DateTime.Now + e.MidiEvent switch
             {
                 ControlChangeEvent evt => $"{evt.Channel} Control Change {evt.Controller} {evt.ControllerValue}",
@@ -85,7 +86,7 @@ public class MidiManager : IMidiDevices
                 PitchWheelChangeEvent evt => $"{evt.Channel} Pitch Wheel {evt.Pitch} / 16384",
                 _ => $"Device {key} MIDI Message {e.MidiEvent.GetType()} Event {e.MidiEvent}"
             });
-
+            */
 
             var midiEvent = e.MidiEvent switch
             {
