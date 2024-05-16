@@ -4,80 +4,8 @@
 @inject JoyStatusViewModel ViewModel
 
 <style>
-    .status-note {
-        text-align: center;
-        line-height: 26px;
-        height: 26px;
-        margin-top: -26px;
-        background-color: lightgoldenrodyellow;
-        color: #233333;
-        border-bottom: 2px solid #f0f2f5;
-        display: none;
-    }
-
-    .status-note > small {
-        color: dimgray;
-        margin-left: 1%;
-    }
-
-    .status-warning {
-        background-color: lightcoral;
-        color: floralwhite;
-        display: block;
-    }
-
-    footer:hover .status-note {
-        display: block;
-    }
-
     .status-container {
-        display: grid;
         grid-template-columns: repeat(@ViewModel.Status.Length, 1fr);
-        width: 100vw;
-        gap: 2px;
-    }
-
-    .status-block {
-        height: 48px;
-        padding-top: 6px;
-        text-align: center;
-    }
-
-    .status-block > div {
-        margin-top: -4px;
-        font-size: 12px;
-    }
-
-    .status-num {
-        display: none;
-    }
-
-    .status-block:hover .status-num {
-        display: block;
-    }
-
-    .status-block:hover .status-info {
-        display: none;
-    }
-
-    .status-Free {
-        background-color: lightgreen;
-        cursor: grab;
-    }
-
-    .status-Engaged {
-        background-color: lightskyblue;
-        cursor: grabbing;
-    }
-
-    .status-Occupied {
-        background-color: lightsalmon;
-        cursor: wait;
-    }
-
-    .status-Unknown {
-        background-color: lightgray;
-        cursor: not-allowed;
     }
 </style>
 
@@ -105,10 +33,10 @@
 }
 
 <div class="status-container">
-    @for (var i = 0; i < ViewModel.Status.Length; i++)
+    @foreach (var (status, index) in ViewModel.Status.Select((v, i) => (v, i)))
     {
-        var id = i + 1;
-        var icon = ViewModel.Status[i] switch
+        var id = index + 1;
+        var icon = status switch
         {
             JoystickStatus.Free => "plus-square",
             JoystickStatus.Engaged => "check-square",
@@ -116,9 +44,9 @@
             _ => "close-square",
         };
 
-        <div class="status-block status-@ViewModel.Status[i]" @onclick="() => ViewModel.ToggleActive(id)">
+        <div class="status-block status-@status" @onclick="() => ViewModel.ToggleActive(id)">
             <Icon Type=@icon Theme="outline" Style="font-size: 24px;"/>
-            <div class="status-info">@(ViewModel.Status[i] != JoystickStatus.Unknown ? ViewModel.Status[i] : id)</div>
+            <div class="status-info">@(status != JoystickStatus.Unknown ? status : id)</div>
             <div class="status-num">@id</div>
         </div>
     }

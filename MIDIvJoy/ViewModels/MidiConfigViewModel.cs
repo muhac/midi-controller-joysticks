@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Web;
 using MIDIvJoy.Models.DataModels;
-using MIDIvJoy.Models.Joysticks;
 using MIDIvJoy.Models.MidiDevices;
 
 namespace MIDIvJoy.ViewModels;
@@ -13,21 +12,19 @@ public struct MidiDeviceInfo
 
 public class MidiConfigViewModel
 {
-    public MidiConfigViewModel(IMidiDevices m, IMidiController c, IJoysticks j)
+    public MidiConfigViewModel(IMidiDevices m, IMidiCommands c, IMidiTower t)
     {
         _m = m;
         _c = c;
-        _j = j;
 
-        _m.EventReceived += OnCommandsReceived;
         _c.CommandsChanged += OnCommandsChanged;
+        t.ActionReceived += OnActionReceived;
 
         _t = new Timer(Watch, null, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 30));
     }
 
     private readonly IMidiDevices _m;
-    private readonly IMidiController _c;
-    private readonly IJoysticks _j;
+    private readonly IMidiCommands _c;
     private Timer _t;
 
     public MidiDeviceInfo[] DevicesAvailable { get; private set; } = [];
@@ -35,20 +32,12 @@ public class MidiConfigViewModel
 
     private Command[] _commands = [];
 
-    public Command[] CommandsAxis => _commands
-        .Where(cmd => cmd.Action.Type == ActionType.Axis)
-        .Where(cmd => cmd.Event.Device == DeviceId)
-        .OrderBy(cmd => cmd.Name)
-        .ToArray();
+    public Command[] CommandsAxis => Commands(ActionType.Axis);
+    public Command[] CommandsButton => Commands(ActionType.Button);
+    public Command[] CommandsUnbinded => Commands(ActionType.None);
 
-    public Command[] CommandsButton => _commands
-        .Where(cmd => cmd.Action.Type == ActionType.Button)
-        .Where(cmd => cmd.Event.Device == DeviceId)
-        .OrderBy(cmd => cmd.Name)
-        .ToArray();
-
-    public Command[] CommandsUnbinded => _commands
-        .Where(cmd => cmd.Action.Type == ActionType.None)
+    private Command[] Commands(ActionType type) => _commands
+        .Where(cmd => cmd.Action.Type == type)
         .Where(cmd => cmd.Event.Device == DeviceId)
         .OrderBy(cmd => cmd.Name)
         .ToArray();
@@ -72,7 +61,9 @@ public class MidiConfigViewModel
 
     private void Watch(object? _)
     {
-        if (_m.GetMidiDevicesCount() == DevicesAvailable.Length) return;
+        var prevDevices = DevicesAvailable.Select(device => device.Id);
+        var currDevices = _m.GetDevices().Select(device => device.Key);
+        if (currDevices.SequenceEqual(prevDevices)) return;
 
         UpdateDevices();
         StateHasChanged();
@@ -81,7 +72,11 @@ public class MidiConfigViewModel
     private void UpdateDevices()
     {
         DevicesAvailable = _m.GetDevices()
-            .Select((device) => new MidiDeviceInfo { Id = device.Key, Name = device.Info.ProductName })
+            .Select(device => new MidiDeviceInfo
+            {
+                Id = device.Key,
+                Name = device.Info.ProductName,
+            })
             //.OrderBy(device => device.Name)
             .ToArray();
 
@@ -94,41 +89,22 @@ public class MidiConfigViewModel
         _commands = _c.ListCommands();
     }
 
-    private void OnCommandsChanged(object? sender, MidiEventArgs e)
+    private void OnCommandsChanged(object? sender, CommandEventArgs e)
     {
         UpdateCommands();
-        StateHasChanged();
+        if (Program.Instance.IsWindowActivated) StateHasChanged();
     }
 
-    private void OnCommandsReceived(object? sender, MidiEventArgs e)
+    private void OnActionReceived(object? sender, CommandEventArgs e)
     {
         if (e.Command is null) return;
-        var action = _c.GetAction(e.Command);
-
-        CommandReceived = action ?? e.Command;
-        if (Program.Instance.IsWindowActivated) StateHasChanged();
-
-        if (action is null)
-        {
-            _c.AddCommand(e.Command);
-            return;
-        }
-
-        var joystick = _j.GetJoystick(action.Action.DeviceId);
-        if (joystick is null) return;
-
-        var result = action.Action.Type switch
-        {
-            ActionType.Axis => joystick.GetFeeder().Set(action.Action.Axis).Result,
-            ActionType.Button => joystick.GetFeeder().Set(action.Action.Button).Result,
-            _ => false,
-        };
+        CommandReceived = e.Command;
     }
 
     public void EditBinding(Command cmd)
     {
         CommandSelected = cmd;
-        CommandEditing = cmd.DeepCopy();
+        CommandEditing = (Command)cmd.Clone();
         if (CommandEditing.Id == string.Empty)
         {
             // edit a new command

@@ -17,16 +17,16 @@ public class JoyStatusViewModel
         _m = m;
         (_, VersionDll, VersionDrv) = m.GetVersions();
         Enumerable.Range(1, m.GetJoystickCount()).ToList().ForEach(i =>
-            {
-                var j = m.GetJoystick(i);
-                if (j != null) j.StatusChanged += OnStatusChanged;
-            });
+        {
+            var j = m.GetJoystick(i);
+            if (j != null) j.StatusChanged += OnStatusChanged;
+        });
     }
 
     private readonly IJoysticks _m;
 
-    public uint VersionDll { get; private set; }
-    public uint VersionDrv { get; private set; }
+    public uint VersionDll { get; }
+    public uint VersionDrv { get; }
 
     public JoystickStatus[] Status { get; private set; } = [];
     public BarType Bar { get; private set; }

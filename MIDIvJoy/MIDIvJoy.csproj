@@ -26,17 +26,17 @@
 
     <ItemGroup>
         <PackageReference Include="AntDesign" Version="0.18.3"/>
+        <PackageReference Include="LiteDB" Version="5.0.19"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="8.0.20"/>
-        <PackageReference Include="NAudio" Version="2.2.1" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="NAudio" Version="2.2.1"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="Views\Counter.razor"/>
+        <Content Include="lib\x64\vJoyInterface.dll">
+            <Link>vJoyInterface.dll</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
-
-    <PropertyGroup>
-        <PostBuildEvent>copy $(SolutionDir)lib\x64\vJoyInterface.dll $(TargetDir).</PostBuildEvent>
-    </PropertyGroup>
 
 </Project>

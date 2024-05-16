@@ -1,13 +1,11 @@
 ﻿using System.Collections.Concurrent;
-using System.IO;
-using Newtonsoft.Json;
 using MIDIvJoy.Models.DataModels;
 
 namespace MIDIvJoy.Models.MidiDevices;
 
-public class MidiController : IMidiController
+public class MidiConfigure : IMidiCommands
 {
-    private const string CommandsSavedFile = "commands.json";
+    private const string DataKey = "commands";
 
     // for binded commands, only exact matches trigger the command
     private readonly ConcurrentDictionary<CommandKey, ConcurrentBag<Command>> _commandsSaved = new();
@@ -15,18 +13,22 @@ public class MidiController : IMidiController
     // for unbinded commands, all commands of the same key are grouped
     private readonly ConcurrentDictionary<CommandKey, Command> _commandsAvail = new();
 
-    public event EventHandler<MidiEventArgs>? CommandsChanged;
+    public event EventHandler<CommandEventArgs>? CommandsChanged;
 
-    public MidiController()
+    public MidiConfigure()
     {
         Task.Run(LoadCommands);
     }
 
     public async Task<bool> LoadCommands()
     {
-        var json = await File.ReadAllTextAsync(CommandsSavedFile);
-        var commands = JsonConvert.DeserializeObject<CommandSaved[]>(json) ?? [];
-        Console.WriteLine($"Commands Loaded from File: {commands.Length}");
+        return await Task.FromResult(LoadCommandsSync());
+    }
+
+    private bool LoadCommandsSync()
+    {
+        var commands = Database.Get<CommandSaved[]>(DataKey) ?? [];
+        Console.WriteLine($"Loaded Command Records: {commands.Length}");
 
         _commandsSaved.Clear();
         foreach (var command in commands.Select(Command.FromSaved))
@@ -34,7 +36,7 @@ public class MidiController : IMidiController
             if (command.Id != string.Empty) AddCommand(command);
         }
 
-        CommandsChanged?.Invoke(this, new MidiEventArgs(null));
+        CommandsChanged?.Invoke(this, new CommandEventArgs(null));
         return true;
     }
 
@@ -44,8 +46,8 @@ public class MidiController : IMidiController
             .Where(c => c.Id != string.Empty)
             .Where(c => c.Action.Type != ActionType.None)
             .Select(c => c.ToSaved());
-        var json = JsonConvert.SerializeObject(commands);
-        await File.WriteAllTextAsync(CommandsSavedFile, json);
+
+        Database.Set(DataKey, commands);
         return await LoadCommands();
     }
 
@@ -59,23 +61,18 @@ public class MidiController : IMidiController
         {
             if (command.Action.Type == ActionType.None) return false;
 
-            var has = _commandsSaved.TryGetValue(command.Key, out var bag);
-            if (!has || bag == null)
-            {
-                bag = new ConcurrentBag<Command> { command };
-                _commandsSaved.TryAdd(command.Key, bag);
-            }
-            else
+            _commandsSaved.AddOrUpdate(command.Key, [command], (_, bag) =>
             {
                 bag.Add(command);
-            }
+                return bag;
+            });
         }
         else
         {
             _commandsAvail[command.Key] = command;
         }
 
-        CommandsChanged?.Invoke(this, new MidiEventArgs(command));
+        CommandsChanged?.Invoke(this, new CommandEventArgs(command));
         return true;
     }
 
@@ -87,27 +84,27 @@ public class MidiController : IMidiController
             return _commandsAvail.TryRemove(command.Key, out _);
         }
 
-        var has = _commandsSaved.TryGetValue(command.Key, out var bag);
-        if (!has || bag == null) return false;
+        if (!_commandsSaved.TryGetValue(command.Key, out var bag)) return false;
 
         var commands = bag.Where(c => c.Id != command.Id);
         _commandsSaved[command.Key] = new ConcurrentBag<Command>(commands);
-        CommandsChanged?.Invoke(this, new MidiEventArgs(command));
+        CommandsChanged?.Invoke(this, new CommandEventArgs(command));
         return true;
     }
 
-    public Command? GetAction(Command query)
+    public Command? GetAction(MidiEvent query)
     {
-        var has = _commandsSaved.TryGetValue(query.Key, out var actions);
+        var key = new CommandKey(query);
+        var has = _commandsSaved.TryGetValue(key, out var actions);
         if (!has || actions == null || actions.IsEmpty) return null;
 
         // search for an axis action
         var actionAxis = actions
             .Where(a => a.Action.Type == ActionType.Axis)
-            .FirstOrDefault(a => a.Event.Value <= query.Event.Value && query.Event.Value <= a.Event.ValueRangeHigh);
+            .FirstOrDefault(a => a.Event.Value <= query.Value && query.Value <= a.Event.ValueRangeHigh);
         if (actionAxis is not null)
         {
-            double value = query.Event.Value - actionAxis.Event.ValueMin;
+            double value = query.Value - actionAxis.Event.ValueMin;
             double range = actionAxis.Event.ValueMax - actionAxis.Event.ValueMin;
             actionAxis.Action.Axis.Percent = double.Max(0, double.Min(100, value / range));
             return actionAxis;
@@ -116,13 +113,13 @@ public class MidiController : IMidiController
         // search for a button press action
         var actionButton = actions
             .Where(a => a.Action.Type == ActionType.Button)
-            .FirstOrDefault(a => a.Event.Value <= query.Event.Value && query.Event.Value <= a.Event.ValueRangeHigh);
+            .FirstOrDefault(a => a.Event.Value <= query.Value && query.Value <= a.Event.ValueRangeHigh);
         if (actionButton is null) return null;
 
         actionButton.Action.Button.On = actionButton.Action.Button.Type == ActionTypeButton.Press;
         if (actionButton.Action.Button.Type == ActionTypeButton.Auto)
         {
-            actionButton.Action.Button.On = query.Event.Value > actionButton.Event.ValueMin;
+            actionButton.Action.Button.On = query.Value > actionButton.Event.ValueMin;
         }
 
         return actionButton;

@@ -3,25 +3,25 @@ using MIDIvJoy.Models.Joysticks;
 
 namespace MIDIvJoy.ViewModels;
 
-public struct JoyDevice
+public class JoyDevice
 {
     public int Id;
     public JoystickStatus Status;
 }
 
-public struct JoyState
+public class JoyState
 {
     public bool Ok;
 
-    public JoyStateAxis[] Axes;
+    public JoyStateAxis[] Axes = [];
 
     public int ButtonNumber;
-    public bool[] ButtonStates;
+    public bool[] ButtonStates = [];
 }
 
-public struct JoyStateAxis
+public class JoyStateAxis
 {
-    public string Name;
+    public string Name = string.Empty;
     public int Index2Col;
 
     public bool Enabled;
@@ -88,7 +88,7 @@ public class JoyWatcherViewModel
         DisplayState = FormatState();
         IsDisplayData = DisplayState.Ok;
 
-        StateHasChanged();
+        if (Program.Instance.IsWindowActivated) StateHasChanged();
     }
 
     private JoyState FormatState()
@@ -99,6 +99,7 @@ public class JoyWatcherViewModel
         var hw = joystick.GetHardware();
         var state = joystick.GetState();
 
+        // TODO: reuse the same instance
         var displayState = new JoyState
         {
             Ok = state.Ok,

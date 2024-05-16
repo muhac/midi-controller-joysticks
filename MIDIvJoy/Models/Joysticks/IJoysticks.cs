@@ -25,6 +25,5 @@ public interface IJoystickFeeder
 {
     public Task<bool> Acquire();
     public Task<bool> Release();
-
-    public Task<bool> Set(OneOf<JoystickActionAxis, JoystickActionButton> action);
+    public Task<bool> Set(OneOf<JoystickActionAxis, JoystickActionButton> state);
 }

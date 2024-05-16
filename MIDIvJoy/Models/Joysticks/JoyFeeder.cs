@@ -217,14 +217,16 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
             var ok = await Set(press);
             _ = Task.Run(async () =>
             {
-                await Task.Delay(ClickReleaseIntervals); // pressed
+                // keep pressed
+                await Task.Delay(ClickReleaseIntervals);
 
                 // the return value sometimes is not reliable
                 // intentional double release in case the first one was missed
                 await Set(release);
                 await Set(release);
 
-                await Task.Delay(ClickReleaseIntervals); // released
+                // keep released
+                await Task.Delay(ClickReleaseIntervals);
                 lock (_clickReleaseLock) _clickReleaseId = null;
             });
 
@@ -236,13 +238,12 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
             SetButton
         );
 
-        await Task.Delay(0);
         return SetJoyState();
     }
 
     private void SetAxis(JoystickActionAxis action)
     {
-        var axisName = "Axis" + action.Axis;
+        var axisName = "Axis" + action.Name;
         var stateType = Instance.State.GetType();
         var axisField = stateType.GetField(axisName);
         if (axisField is null) return;
@@ -282,8 +283,11 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
 
     public async Task<bool> Acquire()
     {
-        await Task.Delay(0);
+        return await Task.FromResult(AcquireSync());
+    }
 
+    private bool AcquireSync()
+    {
         bool acquired;
         lock (_driverLock) acquired = _vj.AcquireVJD(_id);
         if (!acquired) return false;
@@ -299,8 +303,11 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
 
     public async Task<bool> Release()
     {
-        await Task.Delay(0);
+        return await Task.FromResult(ReleaseSync());
+    }
 
+    private bool ReleaseSync()
+    {
         lock (_driverLock) _vj.RelinquishVJD(_id);
         var released = UpdateStatus() != JoystickStatus.Engaged;
 

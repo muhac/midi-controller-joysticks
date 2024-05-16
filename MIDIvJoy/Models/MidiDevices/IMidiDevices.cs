@@ -9,7 +9,7 @@ public interface IMidiDevices
     event EventHandler<MidiEventArgs> EventReceived;
 }
 
-public interface IMidiController
+public interface IMidiCommands
 {
     public Task<bool> LoadCommands();
     public Task<bool> SaveCommands();
@@ -17,7 +17,12 @@ public interface IMidiController
 
     public bool AddCommand(Command command);
     public bool DelCommand(Command command);
-    event EventHandler<MidiEventArgs> CommandsChanged;
+    event EventHandler<CommandEventArgs> CommandsChanged;
 
-    public Command? GetAction(Command command);
+    public Command? GetAction(MidiEvent query);
+}
+
+public interface IMidiTower
+{
+    event EventHandler<CommandEventArgs> ActionReceived;
 }

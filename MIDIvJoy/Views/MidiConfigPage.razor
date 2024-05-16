@@ -3,39 +3,6 @@
 
 @inject MidiConfigViewModel ViewModel
 
-<style>
-    .config-container {
-        display: flex;
-        flex-direction: column;
-        overflow: auto;
-        align-content: start;
-    }
-
-    .config-text-center {
-        flex-grow: 1;
-        text-align: center;
-    }
-
-    .config-text-right {
-        text-align: right;
-    }
-
-    .config-vcenter-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: calc(100vh - 300px);
-    }
-    
-    .config-form-item {
-        margin: 4px;
-    }
-    
-    .config-form-inline {
-        margin-right: 8px;
-    }
-</style>
-
 <Layout Class="app-layout">
     <Menu Class="app-menu" Mode="MenuMode.Inline"
           SelectedKeys="@(new[] { ViewModel.DeviceId })">
@@ -163,7 +130,7 @@
 
             <Modal Title="@($"Edit: {ViewModel.CommandSelected?.Name}")"
                    Visible="@ViewModel.IsSettingsVisible"
-                   Draggable="true" DragInViewport="false"
+                   Draggable="true" DragInViewport="true"
                    OnOk="@ViewModel.EditBindingSave"
                    OnCancel="@ViewModel.EditBindingCancel"
                    ConfirmLoading="@ViewModel.IsSettingsLoading">
@@ -245,8 +212,7 @@
                             <RadioGroup @bind-Value="@context.Action.Axis.Type" Style="display: flex;">
                                 <div class="config-form-inline" style="width: 111px;">
                                     <Select DataSource="@(Enum.GetValues<JoystickAxis>())"
-                                            @bind-Value="@context.Action.Axis.Axis"
-
+                                            @bind-Value="@context.Action.Axis.Name"
                                             Disabled="@(context.Action.Type != ActionType.Axis)"
                                             EnableSearch>
                                     </Select>

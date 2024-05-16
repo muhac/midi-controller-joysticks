@@ -37,3 +37,136 @@
     right: 0.75rem;
     top: 0.5rem;
 }
+
+/* JoyStatusPage.razor */
+
+.status-note {
+    text-align: center;
+    line-height: 26px;
+    height: 26px;
+    margin-top: -26px;
+    background-color: lightgoldenrodyellow;
+    color: #233333;
+    border-bottom: 2px solid #f0f2f5;
+    display: none;
+}
+
+.status-note > small {
+    color: dimgray;
+    margin-left: 1%;
+}
+
+.status-warning {
+    background-color: lightcoral;
+    color: floralwhite;
+    display: block;
+}
+
+footer:hover .status-note {
+    display: block;
+}
+
+.status-container {
+    display: grid;
+    width: 100vw;
+    gap: 2px;
+}
+
+.status-block {
+    height: 48px;
+    padding-top: 6px;
+    text-align: center;
+}
+
+.status-block > div {
+    margin-top: -4px;
+    font-size: 12px;
+}
+
+.status-num {
+    display: none;
+}
+
+.status-block:hover .status-num {
+    display: block;
+}
+
+.status-block:hover .status-info {
+    display: none;
+}
+
+.status-Free {
+    background-color: lightgreen;
+    cursor: grab;
+}
+
+.status-Engaged {
+    background-color: lightskyblue;
+    cursor: grabbing;
+}
+
+.status-Occupied {
+    background-color: lightsalmon;
+    cursor: wait;
+}
+
+.status-Unknown {
+    background-color: lightgray;
+    cursor: not-allowed;
+}
+
+/* JoyWatcherPage.razor */
+
+.watcher-container {
+    display: grid;
+    overflow: auto;
+    align-content: start;
+}
+
+.watcher-text-center {
+    text-align: center;
+}
+
+.watcher-text-bold {
+    font-weight: 500;
+}
+
+.watcher-vcenter-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 300px);
+}
+
+/* MidiConfigPage.razor */
+
+.config-container {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    align-content: start;
+}
+
+.config-text-center {
+    flex-grow: 1;
+    text-align: center;
+}
+
+.config-text-right {
+    text-align: right;
+}
+
+.config-vcenter-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 300px);
+}
+
+.config-form-item {
+    margin: 4px !important;
+}
+
+.config-form-inline {
+    margin-right: 8px !important;
+}

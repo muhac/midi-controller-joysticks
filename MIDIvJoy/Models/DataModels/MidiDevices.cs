@@ -9,22 +9,27 @@ public struct MidiDevice
     public MidiIn? Handler { get; init; }
 }
 
-public class MidiEventArgs(Command? command) : EventArgs
+public class MidiEventArgs(MidiEvent e) : EventArgs
+{
+    public readonly MidiEvent Event = e;
+}
+
+public class CommandEventArgs(Command? command) : EventArgs
 {
     public readonly Command? Command = command;
 }
 
 public class MidiEvent(string device, string command, int value, int valueMin, int valueMax)
 {
-    public string Device { get; init; } = device;
-    public string Command { get; init; } = command;
+    public string Device { get; } = device;
+    public string Command { get; } = command;
     public int Value { get; set; } = value;
-    public int ValueRangeHigh { get; set; } = value;
+    public int ValueRangeHigh { get; set; } = valueMax;
     public int ValueMin { get; set; } = valueMin;
     public int ValueMax { get; set; } = valueMax;
 }
 
-public class Command(MidiEvent e)
+public class Command(MidiEvent e) : ICloneable
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = e.Command;
@@ -32,9 +37,9 @@ public class Command(MidiEvent e)
     public MidiEvent Event { get; set; } = e;
     public JoystickAction Action { get; set; } = new();
 
-    public CommandKey Key => new(this);
+    public CommandKey Key => new(Event);
 
-    public Command DeepCopy()
+    public object Clone()
     {
         var evt = new MidiEvent(
             Event.Device,
@@ -108,10 +113,10 @@ public class Command(MidiEvent e)
     }
 }
 
-public struct CommandKey(Command command)
+public struct CommandKey(MidiEvent e)
 {
-    public string Device = command.Event.Device;
-    public string Event = command.Event.Command;
+    public string Device = e.Device;
+    public string Event = e.Command;
 }
 
 public struct CommandSaved(Command c)
@@ -128,7 +133,7 @@ public struct CommandSaved(Command c)
 
     public int Joystick { get; set; } = c.Action.DeviceId;
     public ActionType Action { get; set; } = c.Action.Type;
-    public JoystickAxis Axis { get; set; } = c.Action.Axis.Axis;
+    public JoystickAxis Axis { get; set; } = c.Action.Axis.Name;
     public ActionTypeAxis AxisType { get; set; } = c.Action.Axis.Type;
     public int Button { get; set; } = c.Action.Button.Number;
     public ActionTypeButton ButtonType { get; set; } = c.Action.Button.Type;

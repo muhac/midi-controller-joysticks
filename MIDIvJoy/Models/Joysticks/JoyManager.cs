@@ -10,6 +10,7 @@ public class JoyManager : IJoysticks
     private readonly object _vJoyLock = new SemaphoreSlim(1, 1);
 
     private readonly JoyFeeder[] _joysticks = new JoyFeeder[16];
+    private readonly CancellationTokenSource _t = new();
 
     private readonly uint _versionDll;
     private readonly uint _versionDrv;
@@ -36,16 +37,20 @@ public class JoyManager : IJoysticks
             var random = new Random((int)i);
             Task.Run(async () =>
             {
-                while (true)
+                while (!_t.Token.IsCancellationRequested)
                 {
                     var status = feeder.UpdateStatus();
                     var time = .5 + random.NextDouble();
                     if (status == JoystickStatus.Occupied) time += 1;
                     await Task.Delay(TimeSpan.FromSeconds(time));
                 }
-                // ReSharper disable once FunctionNeverReturns
-            });
+            }, _t.Token);
         }
+    }
+
+    public void Dispose()
+    {
+        _t.Cancel();
     }
 
     public int GetJoystickCount()

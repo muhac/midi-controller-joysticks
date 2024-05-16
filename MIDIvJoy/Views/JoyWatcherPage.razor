@@ -2,29 +2,6 @@
 
 @inject JoyWatcherViewModel ViewModel
 
-<style>
-    .watcher-container {
-        display: grid;
-        overflow: auto;
-        align-content: start;
-    }
-
-    .watcher-text-center {
-        text-align: center;
-    }
-
-    .watcher-text-bold {
-        font-weight: 500;
-    }
-
-    .watcher-vcenter-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: calc(100vh - 300px);
-    }
-</style>
-
 <Layout Class="app-layout">
     <Menu Class="app-menu" Mode="MenuMode.Inline"
           SelectedKeys="@(new[] { ViewModel.DeviceId.ToString() })">

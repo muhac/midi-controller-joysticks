@@ -27,19 +27,19 @@ public class MidiManager : IMidiDevices
         _devicesLock.EnterWriteLock();
 
         _devices.ToList().ForEach(Dispose);
-        _devices = Enumerable.Range(0, MidiIn.NumberOfDevices)
-            .Select(id =>
+        _devices = new MidiDevice[MidiIn.NumberOfDevices];
+
+        Parallel.For(0, MidiIn.NumberOfDevices, id =>
+        {
+            var info = MidiIn.DeviceInfo(id);
+            var key = $"{info.ProductName} - {info.ProductId}@{info.Manufacturer}";
+            _devices[id] = new MidiDevice
             {
-                var info = MidiIn.DeviceInfo(id);
-                var key = $"{info.ProductName} - {info.ProductId}@{info.Manufacturer}";
-                return new MidiDevice
-                {
-                    Key = key,
-                    Info = MidiIn.DeviceInfo(id),
-                    Handler = Listen(id, key),
-                };
-            })
-            .ToArray();
+                Key = key,
+                Info = MidiIn.DeviceInfo(id),
+                Handler = Listen(id, key),
+            };
+        });
 
         _devicesLock.ExitWriteLock();
     }
@@ -90,26 +90,26 @@ public class MidiManager : IMidiDevices
 
             var midiEvent = e.MidiEvent switch
             {
-                ControlChangeEvent evt => new Command(new MidiEvent(
+                ControlChangeEvent evt => new MidiEvent(
                     key,
                     $"Ctrl {evt.Controller}",
                     evt.ControllerValue,
                     0, 127
-                )),
+                ),
 
-                NoteEvent evt => new Command(new MidiEvent(
+                NoteEvent evt => new MidiEvent(
                     key,
                     $"Note {evt.NoteName}",
                     evt.Velocity,
                     0, 127
-                )),
+                ),
 
-                PitchWheelChangeEvent evt => new Command(new MidiEvent(
+                PitchWheelChangeEvent evt => new MidiEvent(
                     key,
                     $"Pitch {evt.Channel}",
                     evt.Pitch,
                     0, 16384
-                )),
+                ),
 
                 _ => null,
             };

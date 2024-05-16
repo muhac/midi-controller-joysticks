@@ -71,7 +71,7 @@ public enum JoystickAxis : uint
 
 public class JoystickActionAxis(JoystickAxis axis)
 {
-    public JoystickAxis Axis { get; set; } = axis;
+    public JoystickAxis Name { get; set; } = axis;
     public ActionTypeAxis Type { get; set; } = ActionTypeAxis.Position;
     public double Percent { get; set; } = 0;
 }
