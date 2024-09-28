@@ -51,7 +51,7 @@ public class JoyStatusViewModel
             .ToArray();
 
         var unknownCount = status.Count(s => s == JoystickStatus.Unknown);
-        Bar = (unknownCount == totalCount, VersionDll != VersionDrv) switch
+        Bar = (unknownCount == totalCount, VersionDll != VersionDrv && VersionDrv != 0x219) switch
         {
             (true, _) => BarType.Error,
             (_, true) => BarType.Warning,
