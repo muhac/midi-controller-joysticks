@@ -243,7 +243,14 @@ public class JoyFeeder : IJoystick, IJoystickFeeder
 
     private void SetAxis(JoystickActionAxis action)
     {
-        var axisName = "Axis" + action.Name;
+        var axisName = action.Name.ToString();
+        if (axisName.StartsWith('X') || // X, XRot
+            axisName.StartsWith('Y') || // Y, YRot
+            axisName.StartsWith('Z')) //   Z, ZRot
+        {
+            axisName = "Axis" + axisName;
+        }
+
         var stateType = Instance.State.GetType();
         var axisField = stateType.GetField(axisName);
         if (axisField is null) return;
