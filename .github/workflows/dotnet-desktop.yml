@@ -40,14 +40,14 @@ name: .NET Core Desktop
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  release:
+    types: [published]
 
 jobs:
-
   build:
-
     strategy:
       matrix:
         configuration: [Debug, Release]
@@ -62,76 +62,88 @@ jobs:
       Solution_Name: MIDIvJoy.sln
 
     steps:
-    # Fetch dependencies
-    - name: Download vJoy SDK
-      uses: actions/checkout@v4
-      with:
-        repository: 'njz3/vJoy'
-        ref: 'v2.2.1.1'
+      # Fetch dependencies
+      - name: Download vJoy SDK
+        uses: actions/checkout@v4
+        with:
+          repository: "njz3/vJoy"
+          ref: "v2.2.1.1"
 
-    - name: List SDK
-      working-directory: SDK/c#
-      run: |
-        dir
-        dir x64
+      - name: List SDK
+        working-directory: SDK/c#
+        run: |
+          dir
+          dir x64
 
-    - name: Save SDK
-      working-directory: SDK/c#
-      run: |
-        echo d | xcopy x64 $env:TEMP\SDKx64 /s /e /h
-        dir $env:TEMP
+      - name: Save SDK
+        working-directory: SDK/c#
+        run: |
+          echo d | xcopy x64 $env:TEMP\SDKx64 /s /e /h
+          dir $env:TEMP
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Load SDK
-      run: |
-        echo d | xcopy $env:TEMP\SDKx64 lib\x64 /s /e /h
-        dir lib
+      - name: Load SDK
+        run: |
+          echo d | xcopy $env:TEMP\SDKx64 lib\x64 /s /e /h
+          dir lib
 
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2
+      - name: Setup MSBuild.exe
+        uses: microsoft/setup-msbuild@v2
 
-    # Restore the application to populate the obj folder with RuntimeIdentifiers
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+      # Restore the application to populate the obj folder with RuntimeIdentifiers
+      - name: Restore the application
+        run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
+        env:
+          Configuration: ${{ matrix.configuration }}
 
-    - name: Execute unit tests
-      run: dotnet test
+      - name: Execute unit tests
+        run: dotnet test
 
-    - name: Build the application
-      run: dotnet build --configuration ${{ matrix.configuration }}
+      - name: Build the application
+        run: dotnet build --configuration ${{ matrix.configuration }}
 
-    - name: Publish the application
-      run: dotnet publish --configuration ${{ matrix.configuration }} -r win-x64
+      - name: Publish the application
+        run: dotnet publish --configuration ${{ matrix.configuration }} -r win-x64
 
-    - name: List outputs
-      run: |
-        dir bin
-        dir bin\${{ matrix.configuration }}\net8.0-windows
-        dir bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
+      - name: List outputs
+        run: |
+          dir bin
+          dir bin\${{ matrix.configuration }}\net8.0-windows
+          dir bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: MIDIvJoy Dev ${{ matrix.configuration }}
-        path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows
-        retention-days: 7
-        compression-level: 9
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDIvJoy Dev ${{ matrix.configuration }}
+          path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows
+          retention-days: 7
+          compression-level: 9
 
-    - name: Upload publish artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: MIDIvJoy App ${{ matrix.configuration }}
-        path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
-        retention-days: 90
-        compression-level: 9
+      - name: Upload publish artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDIvJoy App ${{ matrix.configuration }}
+          path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
+          retention-days: 90
+          compression-level: 9
+
+      - name: Archive the publish folder
+        run: |
+          Compress-Archive -Path bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish\* -DestinationPath MIDIvJoy_${{ github.ref_name }}.zip
+          dir
+        shell: powershell
+
+      - name: Upload release asset
+        if: github.event_name == 'release' && matrix.configuration == 'Release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: MIDIvJoy\MIDIvJoy_${{ github.ref_name }}.zip
