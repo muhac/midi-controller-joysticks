@@ -66,8 +66,8 @@ jobs:
       - name: Download vJoy SDK
         uses: actions/checkout@v4
         with:
-          repository: "njz3/vJoy"
-          ref: "v2.2.1.1"
+          repository: "BrunnerInnovation/vJoy"
+          ref: "v2.2.2.0"
 
       - name: List SDK
         working-directory: SDK/c#
