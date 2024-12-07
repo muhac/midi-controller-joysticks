@@ -24,8 +24,9 @@ There are two basic types of joystick actions: `Axis` and `Button`.
 For the axis, you can change the range of the MIDI event by setting the minimum and maximum values. The action will be activated when the MIDI event value is within the *trigger range*, while the position of the joystick axis will be calculated based on the *full range*.
 That is,
 
-$$\textrm{axis percentage} = \begin{cases} \dfrac{{\rm value} - {\rm full}_{\rm min}}{{\rm full}\_{\rm max} - {\rm full}\_{\rm min}} & \textrm{if }\ {\rm trigger}\_{\rm min} \leq {\rm value} \leq {\rm trigger}\_{\rm max} \\\\ {\rm unchanged} & \textrm{otherwise} \end{cases}$$
+$$\textrm{axis percentage} = \begin{cases} {\rm max}\ \left(0,\ \ {\rm min}\ \left(1,\ \ \dfrac{{\rm value} - {\rm full}\_{\rm min}}{{\rm full}\_{\rm max} - {\rm full}\_{\rm min}} \right)\right) & \textrm{if }\ {\rm trigger}\_{\rm min} \leq {\rm value} \leq {\rm trigger}\_{\rm max} \\\\ {\rm unchanged} & \textrm{otherwise} \end{cases}$$
 
+It is possible to assign multiple joystick actions to a single MIDI event with different trigger ranges (but do not overlap).
 You can tweak these ranges to get the desired sensitivity and dead zone.
 
 ![Screenshot Axis](./docs/images/ui2.png)
