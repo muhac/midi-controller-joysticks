@@ -136,9 +136,14 @@ jobs:
           retention-days: 90
           compression-level: 9
 
+      - name: Compute filesystem-safe ref name
+        run: |
+          $refSafe = $env:GITHUB_REF_NAME -replace '/', '-'
+          "REF_SAFE=$refSafe" >> $env:GITHUB_ENV
+
       - name: Archive the publish folder
         run: |
-          Compress-Archive -Path bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish\* -DestinationPath MIDIvJoy_${{ github.ref_name }}.zip
+          Compress-Archive -Path bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish\* -DestinationPath MIDIvJoy_${{ env.REF_SAFE }}.zip
           dir
         shell: powershell
 
@@ -146,4 +151,4 @@ jobs:
         if: github.event_name == 'release' && matrix.configuration == 'Release'
         uses: svenstaro/upload-release-action@v2
         with:
-          file: MIDIvJoy\MIDIvJoy_${{ github.ref_name }}.zip
+          file: MIDIvJoy\MIDIvJoy_${{ env.REF_SAFE }}.zip
