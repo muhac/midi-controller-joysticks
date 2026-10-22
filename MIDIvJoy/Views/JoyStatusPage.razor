@@ -45,7 +45,7 @@
         };
 
         <div class="status-block status-@status" @onclick="() => ViewModel.ToggleActive(id)">
-            <Icon Type=@icon Theme="outline" Style="font-size: 24px;"/>
+            <Icon Type=@icon Theme="@IconThemeType.Outline" Style="font-size: 24px;"/>
             <div class="status-info">@(status != JoystickStatus.Unknown ? status : id)</div>
             <div class="status-num">@id</div>
         </div>

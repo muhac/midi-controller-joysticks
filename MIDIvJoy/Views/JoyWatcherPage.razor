@@ -31,7 +31,7 @@
 
             @if (ViewModel.IsDisplayData)
             {
-                <Divider Orientation="left">Axes (@ViewModel.DisplayState.Axes.Count(x => x.Enabled))</Divider>
+                <Divider Orientation="@DividerOrientation.Left">Axes (@ViewModel.DisplayState.Axes.Count(x => x.Enabled))</Divider>
                 <GridRow Gutter="(8, 6)" OnBreakpoint="() => StateHasChanged()">
 
                     @foreach (var axis in ViewModel.DisplayState.Axes)
@@ -52,7 +52,7 @@
 
                 </GridRow>
 
-                <Divider Orientation="left">Buttons (@ViewModel.DisplayState.ButtonNumber)</Divider>
+                <Divider Orientation="@DividerOrientation.Left">Buttons (@ViewModel.DisplayState.ButtonNumber)</Divider>
                 <GridRow Gutter="(8, 6)">
 
                     @foreach (var (state, index) in ViewModel.DisplayState.ButtonStates.Select((x, i) => (x, i)))
@@ -70,7 +70,7 @@
             else
             {
                 <div class="watcher-vcenter-container">
-                    <Result Status="warning" Title="This vJoy device is not engaged."/>
+                    <Result Status="@ResultStatus.Warning" Title="This vJoy device is not engaged."/>
                 </div>
             }
         </Content>
