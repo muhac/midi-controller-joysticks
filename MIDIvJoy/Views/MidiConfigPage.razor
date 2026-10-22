@@ -32,15 +32,15 @@
 
             @if (ViewModel.DevicesAvailable.Length > 0)
             {
-                <Divider Orientation="left">Axes (@ViewModel.CommandsAxis.Length)</Divider>
+                <Divider Orientation="@DividerOrientation.Left">Axes (@ViewModel.CommandsAxis.Length)</Divider>
                 <GridRow Gutter="(8, 8)" OnBreakpoint="() => StateHasChanged()">
 
                     @foreach (var command in ViewModel.CommandsAxis)
                     {
                         var isTriggered = command.Id == ViewModel.CommandReceived?.Id;
                         <GridCol Span="8" Md="8" Lg="6" Xxl="3">
-                            <Button Style="width: 100%;" Size="small"
-                                    Type=@(isTriggered ? "primary" : "default")
+                            <Button Style="width: 100%;" Size="@ButtonSize.Small"
+                                    Type=@(isTriggered ? ButtonType.Primary : ButtonType.Default)
                                     OnClick=@(_ => ViewModel.EditBinding(command))>
                                 @command.Name
                             </Button>
@@ -79,15 +79,15 @@
 
                 </GridRow>
 
-                <Divider Orientation="left">Buttons (@ViewModel.CommandsButton.Length)</Divider>
+                <Divider Orientation="@DividerOrientation.Left">Buttons (@ViewModel.CommandsButton.Length)</Divider>
                 <GridRow Gutter="(8, 8)" OnBreakpoint="() => StateHasChanged()">
 
                     @foreach (var command in ViewModel.CommandsButton)
                     {
                         var isTriggered = command.Id == ViewModel.CommandReceived?.Id;
                         <GridCol Span="8" Md="8" Lg="6" Xxl="3">
-                            <Button Style="width: 100%;" Size="small"
-                                    Type=@(isTriggered ? "primary" : "default")
+                            <Button Style="width: 100%;" Size="@ButtonSize.Small"
+                                    Type=@(isTriggered ? ButtonType.Primary : ButtonType.Default)
                                     OnClick=@(_ => ViewModel.EditBinding(command))>
                                 @command.Name
                             </Button>
@@ -96,7 +96,7 @@
 
                 </GridRow>
 
-                <Divider Orientation="left">Unassigned (@ViewModel.CommandsUnbinded.Length)</Divider>
+                <Divider Orientation="@DividerOrientation.Left">Unassigned (@ViewModel.CommandsUnbinded.Length)</Divider>
                 <GridRow Gutter="(8, 8)">
 
                     @foreach (var command in ViewModel.CommandsUnbinded)
@@ -104,8 +104,8 @@
                         var isTriggered = command.Key.Equals(ViewModel.CommandReceived?.Key);
                         if (ViewModel.CommandReceived?.Action.Type != ActionType.None) isTriggered = false;
                         <GridCol Span="6" Md="4" Lg="3">
-                            <Button Style="width: 100%;" Size="small"
-                                    Type=@(isTriggered ? "primary" : "default")
+                            <Button Style="width: 100%;" Size="@ButtonSize.Small"
+                                    Type=@(isTriggered ? ButtonType.Primary : ButtonType.Default)
                                     OnClick=@(_ => ViewModel.EditBinding(command))>
                                 @command.Name
                             </Button>
@@ -124,7 +124,7 @@
             else
             {
                 <div class="config-vcenter-container">
-                    <Result Status="warning" Title="No MIDI Controller Available."/>
+                    <Result Status="@ResultStatus.Warning" Title="No MIDI Controller Available."/>
                 </div>
             }
 
@@ -140,7 +140,7 @@
                     <Form Model="@ViewModel.CommandEditing"
                           LabelColSpan="6"
                           WrapperColSpan="18"
-                          Size="small"
+                          Size="@FormSize.Small"
                           Loading="@ViewModel.IsSettingsLoading">
 
                         <FormItem class="config-form-item" Label="Name">
@@ -159,11 +159,11 @@
 
                         <FormItem class="config-form-item" Label="Trigger Values">
                             <InputGroup Compact>
-                                <Input Type="number" @bind-Value="@context.Event.Value"
+                                <Input Type="@InputType.Number" @bind-Value="@context.Event.Value"
                                        min="@context.Event.ValueMin" max="@context.Event.ValueRangeHigh"
                                        Disabled="@(context.Action.Type == ActionType.None)"/>
                                 <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
-                                <Input Type="number" @bind-Value="@context.Event.ValueRangeHigh"
+                                <Input Type="@InputType.Number" @bind-Value="@context.Event.ValueRangeHigh"
                                        max="@context.Event.ValueMax" min="@context.Event.Value"
                                        Disabled="@(context.Action.Type == ActionType.None)"/>
                             </InputGroup>
@@ -171,11 +171,11 @@
 
                         <FormItem class="config-form-item" Label="Full Range">
                             <InputGroup Compact>
-                                <Input Type="number" @bind-Value="@context.Event.ValueMin"
+                                <Input Type="@InputType.Number" @bind-Value="@context.Event.ValueMin"
                                        max="@int.Min(context.Event.ValueMax, context.Event.Value)"
                                        Disabled="@(context.Action.Type == ActionType.None)"/>
                                 <Input Style="width: 30px; pointer-events: none;" Value="@("~")" Disabled/>
-                                <Input Type="number" @bind-Value="@context.Event.ValueMax"
+                                <Input Type="@InputType.Number" @bind-Value="@context.Event.ValueMax"
                                        min="@int.Min(context.Event.ValueMin, context.Event.ValueRangeHigh)"
                                        Disabled="@(context.Action.Type == ActionType.None)"/>
                             </InputGroup>
