@@ -64,7 +64,7 @@ jobs:
     steps:
       # Fetch dependencies
       - name: Download vJoy SDK
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: "BrunnerInnovation/vJoy"
           ref: "v2.2.2.0"
@@ -82,7 +82,7 @@ jobs:
           dir $env:TEMP
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
