@@ -6,9 +6,6 @@ updates:
     directory: "/MIDIvJoy"
     schedule:
       interval: "weekly"
-    labels:
-      - "dependencies"
-      - "nuget"
     groups:
       nuget-minor-patch:
         update-types:
@@ -19,9 +16,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    labels:
-      - "dependencies"
-      - "github-actions"
     groups:
       actions-minor-patch:
         update-types:
