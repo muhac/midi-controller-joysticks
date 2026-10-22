@@ -121,7 +121,7 @@ jobs:
           dir bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MIDIvJoy Dev ${{ matrix.configuration }}
           path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows
@@ -129,7 +129,7 @@ jobs:
           compression-level: 9
 
       - name: Upload publish artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MIDIvJoy App ${{ matrix.configuration }}
           path: MIDIvJoy\bin\${{ matrix.configuration }}\net8.0-windows\win-x64\publish
